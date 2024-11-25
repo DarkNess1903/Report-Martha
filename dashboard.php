@@ -1,123 +1,133 @@
+<?php
+session_start();
+require 'config.php';
+
+// ตรวจสอบการเข้าสู่ระบบ
+if (!isset($_SESSION['user_id'])) {
+    header('Location: login.php');
+    exit;
+}
+
+// เรียกข้อมูลยอดขายจากฐานข้อมูล
+$year = isset($_GET['year']) ? $_GET['year'] : date('Y');
+$quarter = isset($_GET['quarter']) ? $_GET['quarter'] : 'all'; // ใช้ 'all' สำหรับกรณีไม่เลือกไตรมาส
+
+// ฟังก์ชันดึงข้อมูลยอดขายจากฐานข้อมูล
+function getSalesData($year, $quarter = 'all') {
+    global $pdo;
+    if ($quarter == 'all') {
+        // ถ้าเลือก 'all' ไม่ต้องใช้ :quarter
+        $sql = "SELECT user_id, SUM(sale_amount) AS total_sales FROM sales WHERE YEAR(sale_date) = :year GROUP BY user_id";
+        $stmt = $pdo->prepare($sql);
+        $stmt->execute(['year' => $year]);
+    } else {
+        // ถ้าเลือกไตรมาส ให้ส่ง :quarter
+        $sql = "SELECT user_id, SUM(sale_amount) AS total_sales FROM sales WHERE YEAR(sale_date) = :year AND QUARTER(sale_date) = :quarter GROUP BY user_id";
+        $stmt = $pdo->prepare($sql);
+        $stmt->execute(['year' => $year, 'quarter' => $quarter]);
+    }
+    return $stmt->fetchAll(PDO::FETCH_ASSOC);
+}
+
+// ฟังก์ชันดึงข้อมูลยอดขายรวม
+function getTotalSales($year, $quarter = 'all') {
+    global $pdo;
+    if ($quarter == 'all') {
+        // ถ้าเลือก 'all' ไม่ต้องใช้ :quarter
+        $sql = "SELECT SUM(sale_amount) AS total_sales FROM sales WHERE YEAR(sale_date) = :year";
+        $stmt = $pdo->prepare($sql);
+        $stmt->execute(['year' => $year]);
+    } else {
+        // ถ้าเลือกไตรมาส ให้ส่ง :quarter
+        $sql = "SELECT SUM(sale_amount) AS total_sales FROM sales WHERE YEAR(sale_date) = :year AND QUARTER(sale_date) = :quarter";
+        $stmt = $pdo->prepare($sql);
+        $stmt->execute(['year' => $year, 'quarter' => $quarter]);
+    }
+    return $stmt->fetchColumn();
+}
+
+// ข้อมูลยอดขายรวม
+$totalSales = getTotalSales($year, $quarter);
+?>
+
 <!DOCTYPE html>
-<html lang="en">
+<html lang="th">
 <head>
-  <meta charset="utf-8">
-  <meta content="width=device-width, initial-scale=1.0" name="viewport">
-
-  <title>บริษัท มาร์ธา กรุ๊ปจำกัด</title>
-  <meta content="" name="description">
-  <meta content="" name="keywords">
-
-  <!-- Favicons -->
-  <link href="assets/img/ma2.png" rel="icon">
-  <link href="assets/img/ma2.png" rel="apple-touch-icon">
-
-  <!-- Google Fonts -->
-  <link href="https://fonts.gstatic.com" rel="preconnect">
-  <link href="https://fonts.googleapis.com/css?family=Open+Sans:300,300i,400,400i,600,600i,700,700i|Nunito:300,300i,400,400i,600,600i,700,700i|Poppins:300,300i,400,400i,500,500i,600,600i,700,700i" rel="stylesheet">
-
-  <!-- Vendor CSS Files -->
-  <link href="assets/vendor/bootstrap/css/bootstrap.min.css" rel="stylesheet">
-  <link href="assets/vendor/bootstrap-icons/bootstrap-icons.css" rel="stylesheet">
-  <link href="assets/vendor/boxicons/css/boxicons.min.css" rel="stylesheet">
-  <link href="assets/vendor/quill/quill.snow.css" rel="stylesheet">
-  <link href="assets/vendor/quill/quill.bubble.css" rel="stylesheet">
-  <link href="assets/vendor/remixicon/remixicon.css" rel="stylesheet">
-  <link href="assets/vendor/simple-datatables/style.css" rel="stylesheet">
-
-  <!-- Template Main CSS File -->
-  <link href="assets/css/style.css" rel="stylesheet">
-
+    <meta charset="UTF-8">
+    <title>แดชบอร์ด</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/css/bootstrap.min.css" rel="stylesheet">
 </head>
-
-
-
-<!-- เนื้อหา -->
-<main id="main" class="main">
-<section class="section contact">
-
-      <div class="row gy-4">
-
-        <div class="col-xl-12">
-
-          <div class="row">
-            <div class="col-lg-3">
-            <a href="index.php" class="text-decoration-none">
-              <div class="info-box card">
-                <i class="bi bi-geo-alt"></i>
-                <h3>Address</h3>
-                <p>A108 Adam Street,<br>New York, NY 535022</p>
-              </div>
-            </a>
+<body>
+    <div class="container">
+        <h2 class="mt-5">แดชบอร์ดยอดขาย</h2>
+        
+        <!-- เลือกปีและไตรมาส -->
+        <form method="GET" class="mb-3">
+            <div class="row">
+                <div class="col-md-4">
+                    <label for="year" class="form-label">เลือกปี</label>
+                    <select class="form-select" id="year" name="year">
+                        <?php for ($i = 2020; $i <= date('Y'); $i++) { ?>
+                            <option value="<?= $i ?>" <?= ($i == $year) ? 'selected' : ''; ?>><?= $i ?></option>
+                        <?php } ?>
+                    </select>
+                </div>
+                <div class="col-md-4">
+                    <label for="quarter" class="form-label">เลือกไตรมาส</label>
+                    <select class="form-select" id="quarter" name="quarter">
+                        <option value="all" <?= ($quarter == 'all') ? 'selected' : ''; ?>>ทั้งหมด</option>
+                        <option value="1" <?= ($quarter == '1') ? 'selected' : ''; ?>>ไตรมาส 1</option>
+                        <option value="2" <?= ($quarter == '2') ? 'selected' : ''; ?>>ไตรมาส 2</option>
+                        <option value="3" <?= ($quarter == '3') ? 'selected' : ''; ?>>ไตรมาส 3</option>
+                        <option value="4" <?= ($quarter == '4') ? 'selected' : ''; ?>>ไตรมาส 4</option>
+                    </select>
+                </div>
+                <div class="col-md-4">
+                    <button type="submit" class="btn btn-primary mt-4">แสดงข้อมูล</button>
+                </div>
             </div>
-            <div class="col-lg-3">
-              <div class="info-box card">
-                <i class="bi bi-telephone"></i>
-                <h3>Call Us</h3>
-                <p>+1 5589 55488 55<br>+1 6678 254445 41</p>
-              </div>
-            </div>
-            <div class="col-lg-3">
-              <div class="info-box card">
-                <i class="bi bi-envelope"></i>
-                <h3>Email Us</h3>
-                <p>info@example.com<br>contact@example.com</p>
-              </div>
-            </div>
-            <div class="col-lg-3">
-              <div class="info-box card">
-                <i class="bi bi-clock"></i>
-                <h3>Open Hours</h3>
-                <p>Monday - Friday<br>9:00AM - 05:00PM</p>
-              </div>
-            </div>
-          </div>
+        </form>
 
-          <div class="row">
-            <div class="col-lg-3">
-              <div class="info-box card">
-                <i class="bi bi-geo-alt"></i>
-                <h3>Address</h3>
-                <p>A108 Adam Street,<br>New York, NY 535022</p>
-              </div>
-            </div>
-            <div class="col-lg-3">
-              <div class="info-box card">
-                <i class="bi bi-telephone"></i>
-                <h3>Call Us</h3>
-                <p>+1 5589 55488 55<br>+1 6678 254445 41</p>
-              </div>
-            </div>
-            <div class="col-lg-3">
-              <div class="info-box card">
-                <i class="bi bi-envelope"></i>
-                <h3>Email Us</h3>
-                <p>info@example.com<br>contact@example.com</p>
-              </div>
-            </div>
-            <div class="col-lg-3">
-              <div class="info-box card">
-                <i class="bi bi-clock"></i>
-                <h3>Open Hours</h3>
-                <p>Monday - Friday<br>9:00AM - 05:00PM</p>
-              </div>
-            </div>
-          </div>
-    
-    
+        <!-- ข้อมูลยอดขายรวม -->
+        <h3>ยอดขายรวม: ฿<?= number_format($totalSales, 2) ?></h3>
 
-        </div>
+        <!-- กราฟยอดขาย -->
+        <canvas id="salesChart"></canvas>
 
-      </div>
+        <script>
+            var ctx = document.getElementById('salesChart').getContext('2d');
+            var salesData = <?php echo json_encode($salesData); ?>;
+            
+            var labels = salesData.map(function(sale) {
+                return 'พนักงาน ' + sale.user_id;
+            });
 
-    </section>
+            var data = salesData.map(function(sale) {
+                return sale.total_sales;
+            });
 
-      
-
-</main>
-<!-- จบเนื้อหา -->
-
-  <?php include 'navbar.php'; ?> 
-
-<
+            var chart = new Chart(ctx, {
+                type: 'bar', // กราฟแท่ง
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        label: 'ยอดขาย',
+                        data: data,
+                        backgroundColor: 'rgba(54, 162, 235, 0.2)',
+                        borderColor: 'rgba(54, 162, 235, 1)',
+                        borderWidth: 1
+                    }]
+                },
+                options: {
+                    scales: {
+                        y: {
+                            beginAtZero: true
+                        }
+                    }
+                }
+            });
+        </script>
+    </div>
+</body>
 </html>
