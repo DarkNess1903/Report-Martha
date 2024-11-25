@@ -1,67 +1,64 @@
 <?php
 session_start();
-require 'config.php';
+include 'db.php';
 
+// ตรวจสอบสิทธิ์
 if (!isset($_SESSION['user_id']) || $_SESSION['role'] != 'admin') {
     header('Location: login.php');
-    exit;
+    exit();
 }
 
-if (isset($_GET['id'])) {
-    $user_id = $_GET['id'];
+$id = $_GET['id'];
+$sql = "SELECT * FROM users WHERE id = $id AND role = 'sales'";
+$result = $conn->query($sql);
 
-    // ดึงข้อมูลผู้ใช้ที่ต้องการแก้ไข
-    $sql = "SELECT * FROM users WHERE id = :id";
-    $stmt = $pdo->prepare($sql);
-    $stmt->execute(['id' => $user_id]);
-    $user = $stmt->fetch();
+if ($result->num_rows == 0) {
+    header('Location: manage_users.php');
+    exit();
+}
 
-    if ($_SERVER['REQUEST_METHOD'] == 'POST') {
-        $username = $_POST['username'];
-        $password = $_POST['password'] ? password_hash($_POST['password'], PASSWORD_DEFAULT) : $user['password'];
-        $role = $_POST['role'];
+$user = $result->fetch_assoc();
 
-        // อัปเดตข้อมูลผู้ใช้งาน
-        $sql = "UPDATE users SET username = :username, password = :password, role = :role WHERE id = :id";
-        $stmt = $pdo->prepare($sql);
-        $stmt->execute(['username' => $username, 'password' => $password, 'role' => $role, 'id' => $user_id]);
+if ($_SERVER['REQUEST_METHOD'] == 'POST') {
+    $username = $_POST['username'];
+    $password = empty($_POST['password']) ? $user['password'] : md5($_POST['password']); // ถ้าไม่กรอกรหัสผ่านใหม่ ใช้ของเดิม
 
-        header('Location: dashboard.php');
-        exit;
+    $sql = "UPDATE users SET username = '$username', password = '$password' WHERE id = $id";
+    if ($conn->query($sql) === TRUE) {
+        header('Location: manage_users.php');
+        exit();
+    } else {
+        $error = "เกิดข้อผิดพลาด: " . $conn->error;
     }
-} else {
-    header('Location: dashboard.php');
-    exit;
 }
 ?>
 
 <!DOCTYPE html>
-<html lang="th">
+<html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>แก้ไขผู้ใช้งาน</title>
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/css/bootstrap.min.css" rel="stylesheet">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" href="css/bootstrap.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <title>แก้ไขพนักงาน</title>
 </head>
 <body>
-    <div class="container">
-        <h2 class="mt-5">แก้ไขข้อมูลผู้ใช้งาน</h2>
-        <form method="POST">
+    <div class="container mt-5">
+        <h1 class="mb-4">แก้ไขพนักงาน</h1>
+        <?php if (isset($error)): ?>
+            <div class="alert alert-danger"><?= $error ?></div>
+        <?php endif; ?>
+        <form method="POST" action="">
             <div class="mb-3">
                 <label for="username" class="form-label">ชื่อผู้ใช้</label>
-                <input type="text" class="form-control" id="username" name="username" value="<?php echo $user['username']; ?>" required>
+                <input type="text" class="form-control" id="username" name="username" value="<?= htmlspecialchars($user['username']) ?>" required>
             </div>
             <div class="mb-3">
-                <label for="password" class="form-label">รหัสผ่าน</label>
+                <label for="password" class="form-label">รหัสผ่าน (ปล่อยว่างหากไม่ต้องการเปลี่ยน)</label>
                 <input type="password" class="form-control" id="password" name="password">
             </div>
-            <div class="mb-3">
-                <label for="role" class="form-label">บทบาท</label>
-                <select class="form-select" id="role" name="role" required>
-                    <option value="admin" <?php if ($user['role'] == 'admin') echo 'selected'; ?>>ผู้บริหาร</option>
-                    <option value="sales" <?php if ($user['role'] == 'sales') echo 'selected'; ?>>พนักงานขาย</option>
-                </select>
-            </div>
-            <button type="submit" class="btn btn-warning">แก้ไขผู้ใช้งาน</button>
+            <button type="submit" class="btn btn-warning">บันทึก</button>
+            <a href="manage_users.php" class="btn btn-secondary">ยกเลิก</a>
         </form>
     </div>
 </body>

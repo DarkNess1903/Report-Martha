@@ -1,36 +1,43 @@
 <?php
 session_start();
-require 'config.php';
+include 'db.php';
+
+// ตรวจสอบสิทธิ์
+if (!isset($_SESSION['user_id']) || $_SESSION['role'] != 'admin') {
+    header('Location: login.php');
+    exit();
+}
 
 if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     $username = $_POST['username'];
-    $password = $_POST['password'];  // ใช้รหัสผ่านที่ผู้ใช้กรอก
-    $role = $_POST['role'];
+    $password = md5($_POST['password']); // เข้ารหัสรหัสผ่าน
 
-    // ใช้ password_hash เพื่อเข้ารหัสรหัสผ่านก่อนบันทึกลงฐานข้อมูล
-    $hashed_password = password_hash($password, PASSWORD_DEFAULT);
-
-    // เพิ่มข้อมูลผู้ใช้งานใหม่ในฐานข้อมูล
-    $sql = "INSERT INTO users (username, password, role) VALUES (:username, :password, :role)";
-    $stmt = $pdo->prepare($sql);
-    $stmt->execute(['username' => $username, 'password' => $hashed_password, 'role' => $role]);
-
-    header('Location: dashboard.php');
-    exit;
+    // เพิ่มพนักงาน
+    $sql = "INSERT INTO users (username, password, role) VALUES ('$username', '$password', 'sales')";
+    if ($conn->query($sql) === TRUE) {
+        header('Location: manage_users.php');
+        exit();
+    } else {
+        $error = "เกิดข้อผิดพลาด: " . $conn->error;
+    }
 }
 ?>
 
 <!DOCTYPE html>
-<html lang="th">
+<html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>เพิ่มผู้ใช้งาน</title>
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/css/bootstrap.min.css" rel="stylesheet">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" href="css/bootstrap.min.css">
+    <title>เพิ่มพนักงาน</title>
 </head>
 <body>
-    <div class="container">
-        <h2 class="mt-5">เพิ่มผู้ใช้งานใหม่</h2>
-        <form method="POST">
+    <div class="container mt-5">
+        <h1 class="mb-4">เพิ่มพนักงาน</h1>
+        <?php if (isset($error)): ?>
+            <div class="alert alert-danger"><?= $error ?></div>
+        <?php endif; ?>
+        <form method="POST" action="">
             <div class="mb-3">
                 <label for="username" class="form-label">ชื่อผู้ใช้</label>
                 <input type="text" class="form-control" id="username" name="username" required>
@@ -39,14 +46,8 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                 <label for="password" class="form-label">รหัสผ่าน</label>
                 <input type="password" class="form-control" id="password" name="password" required>
             </div>
-            <div class="mb-3">
-                <label for="role" class="form-label">บทบาท</label>
-                <select class="form-select" id="role" name="role" required>
-                    <option value="admin">ผู้บริหาร</option>
-                    <option value="sales">พนักงานขาย</option>
-                </select>
-            </div>
-            <button type="submit" class="btn btn-primary">เพิ่มผู้ใช้งาน</button>
+            <button type="submit" class="btn btn-success">เพิ่ม</button>
+            <a href="manage_users.php" class="btn btn-secondary">ยกเลิก</a>
         </form>
     </div>
 </body>
