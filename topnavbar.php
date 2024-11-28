@@ -12,10 +12,10 @@
                 <?php if (isset($_SESSION['role'])): ?>
                     <?php if ($_SESSION['role'] == 'admin'): ?>
                         <li class="nav-item">
-                            <a class="nav-link text-white" href="manage_users.php">จัดการพนักงาน</a>
+                            <a class="nav-link text-white" href="manage_sales.php">จัดการยอดขาย</a>
                         </li>
                         <li class="nav-item">
-                            <a class="nav-link text-white" href="manage_sales.php">จัดการยอดขาย</a>
+                            <a class="nav-link text-white" href="manage_users.php">จัดการพนักงาน</a>
                         </li>
                     <?php elseif ($_SESSION['role'] == 'sales'): ?>
                         <li class="nav-item">
