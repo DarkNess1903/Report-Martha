@@ -12,7 +12,9 @@ if (!isset($_SESSION['user_id']) || $_SESSION['role'] != 'admin') {
 if (isset($_POST['add_user'])) {
     $username = $_POST['username'];
     $password = password_hash($_POST['password'], PASSWORD_DEFAULT);
-    $role = $_POST['role']; // role สามารถเป็น 'sales' หรือ 'admin'
+
+    // บทบาทจะถูกกำหนดเป็น 'sales' เท่านั้น
+    $role = 'sales';
 
     $sql = "INSERT INTO users (username, password, role) VALUES ('$username', '$password', '$role')";
     if ($conn->query($sql) === TRUE) {
@@ -33,8 +35,8 @@ if (isset($_GET['delete_id'])) {
     }
 }
 
-// แสดงข้อมูลพนักงานทั้งหมด
-$sql = "SELECT * FROM users";
+// แสดงข้อมูลพนักงานที่มีบทบาทเป็น 'sales' เท่านั้น
+$sql = "SELECT * FROM users WHERE role = 'sales'";
 $result = $conn->query($sql);
 ?>
 
@@ -73,13 +75,6 @@ $result = $conn->query($sql);
                 <label for="password" class="form-label">รหัสผ่าน</label>
                 <input type="password" class="form-control" name="password" required>
             </div>
-            <div class="mb-3">
-                <label for="role" class="form-label">บทบาท</label>
-                <select class="form-select" name="role" required>
-                    <option value="sales">พนักงานขาย</option>
-                    <option value="admin">ผู้บริหาร</option>
-                </select>
-            </div>
             <button type="submit" name="add_user" class="btn btn-primary">เพิ่มพนักงาน</button>
         </form>
 
@@ -91,7 +86,6 @@ $result = $conn->query($sql);
                 <tr>
                     <th>#</th>
                     <th>ชื่อผู้ใช้</th>
-                    <th>บทบาท</th>
                     <th>จัดการ</th>
                 </tr>
             </thead>
@@ -100,7 +94,6 @@ $result = $conn->query($sql);
                     <tr>
                         <td><?= $row['id'] ?></td>
                         <td><?= htmlspecialchars($row['username']) ?></td>
-                        <td><?= htmlspecialchars($row['role']) ?></td>
                         <td>
                             <a href="manage_users.php?delete_id=<?= $row['id'] ?>" class="btn btn-danger" onclick="return confirm('คุณต้องการลบพนักงานนี้?')">ลบ</a>
                         </td>

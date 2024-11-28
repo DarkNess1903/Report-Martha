@@ -12,20 +12,42 @@ if (!isset($_SESSION['user_id']) || $_SESSION['role'] != 'admin') {
 if (isset($_POST['add_sale'])) {
     $user_id = $_POST['user_id'];
     $year = $_POST['year'];
-    $quarter = $_POST['quarter'];
+    
+    // แปลงค่าของ quarter เป็นตัวเลข (1-4)
+    switch ($_POST['quarter']) {
+        case 'Q1':
+            $quarter = 1;
+            break;
+        case 'Q2':
+            $quarter = 2;
+            break;
+        case 'Q3':
+            $quarter = 3;
+            break;
+        case 'Q4':
+            $quarter = 4;
+            break;
+        default:
+            $error_message = "กรุณากรอกไตรมาสที่ถูกต้อง (Q1, Q2, Q3, Q4)";
+            break;
+    }
+
     $amount = $_POST['amount'];
 
-    // ใช้การเตรียมคำสั่ง SQL (prepared statement) เพื่อป้องกัน SQL Injection
-    $stmt = $conn->prepare("INSERT INTO sales (user_id, year, quarter, amount) VALUES (?, ?, ?, ?)");
-    $stmt->bind_param("issd", $user_id, $year, $quarter, $amount);
+    if (!isset($error_message)) {
+        // ใช้การเตรียมคำสั่ง SQL (prepared statement) เพื่อป้องกัน SQL Injection
+        $stmt = $conn->prepare("INSERT INTO sales (user_id, year, quarter, amount) VALUES (?, ?, ?, ?)");
+        $stmt->bind_param("issd", $user_id, $year, $quarter, $amount);
     
-    if ($stmt->execute()) {
-        $success_message = "เพิ่มข้อมูลยอดขายสำเร็จ";
-    } else {
-        $error_message = "เกิดข้อผิดพลาด: " . $stmt->error;
+        if ($stmt->execute()) {
+            $success_message = "เพิ่มข้อมูลยอดขายสำเร็จ";
+        } else {
+            $error_message = "เกิดข้อผิดพลาด: " . $stmt->error;
+        }
+        $stmt->close();
     }
-    $stmt->close();
 }
+
 
 // ลบข้อมูลยอดขาย
 if (isset($_GET['delete_sale'])) {
@@ -34,7 +56,7 @@ if (isset($_GET['delete_sale'])) {
     // ใช้การเตรียมคำสั่ง SQL (prepared statement) เพื่อป้องกัน SQL Injection
     $stmt = $conn->prepare("DELETE FROM sales WHERE id = ?");
     $stmt->bind_param("i", $sale_id);
-    
+
     if ($stmt->execute()) {
         $success_message = "ลบข้อมูลยอดขายสำเร็จ";
     } else {
@@ -123,18 +145,24 @@ $result = $conn->query($sql);
                 </tr>
             </thead>
             <tbody>
-                <?php while ($row = $result->fetch_assoc()): ?>
+                <?php if ($result->num_rows > 0): ?>
+                    <?php while ($row = $result->fetch_assoc()): ?>
+                        <tr>
+                            <td><?= $row['id'] ?></td>
+                            <td><?= htmlspecialchars($row['username']) ?></td>
+                            <td><?= $row['year'] ?></td>
+                            <td><?= $row['quarter'] ?></td>
+                            <td><?= number_format($row['amount'], 2) ?></td>
+                            <td>
+                                <a href="manage_sales.php?delete_sale=<?= $row['id'] ?>" class="btn btn-danger" onclick="return confirm('คุณต้องการลบข้อมูลนี้?')">ลบ</a>
+                            </td>
+                        </tr>
+                    <?php endwhile; ?>
+                <?php else: ?>
                     <tr>
-                        <td><?= $row['id'] ?></td>
-                        <td><?= htmlspecialchars($row['username']) ?></td>
-                        <td><?= $row['year'] ?></td>
-                        <td><?= $row['quarter'] ?></td>
-                        <td><?= number_format($row['amount'], 2) ?></td>
-                        <td>
-                            <a href="manage_sales.php?delete_sale=<?= $row['id'] ?>" class="btn btn-danger" onclick="return confirm('คุณต้องการลบข้อมูลนี้?')">ลบ</a>
-                        </td>
+                        <td colspan="6" class="text-center">ไม่มีข้อมูลยอดขาย</td>
                     </tr>
-                <?php endwhile; ?>
+                <?php endif; ?>
             </tbody>
         </table>
     </div>

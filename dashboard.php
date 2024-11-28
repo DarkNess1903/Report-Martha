@@ -11,29 +11,77 @@ if (!isset($_SESSION['user_id'])) {
 $username = $_SESSION['username'];
 $role = $_SESSION['role'];
 
-// กำหนดปีเริ่มต้นและไตรมาสเริ่มต้น
-$year = isset($_GET['year']) ? $_GET['year'] : date('Y');
-$quarter = isset($_GET['quarter']) ? $_GET['quarter'] : 'Q1';
-
-// ดึงข้อมูลยอดขายของพนักงานแต่ละคนตามปีและไตรมาส
-$sql_sales = "SELECT sales.user_id, users.username, SUM(sales.amount) AS total_sales
-              FROM sales
-              INNER JOIN users ON sales.user_id = users.id
-              WHERE sales.year = '$year' AND sales.quarter = '$quarter'
-              GROUP BY sales.user_id";
-$result_sales = $conn->query($sql_sales);
-$sales_data = [];
-while ($row = $result_sales->fetch_assoc()) {
-    $sales_data[] = $row;
+// ดึงปีทั้งหมดจากฐานข้อมูล
+$sql_years = "SELECT DISTINCT year FROM sales ORDER BY year ASC";
+$result_years = $conn->query($sql_years);
+$all_years = [];
+while ($row = $result_years->fetch_assoc()) {
+    $all_years[] = $row['year'];
 }
 
-// ดึงข้อมูลยอดขายรวมของทุกคนตามปีและไตรมาส
-$sql_total_sales = "SELECT SUM(amount) AS total_sales 
-                    FROM sales
-                    WHERE year = '$year' AND quarter = '$quarter'";
-$result_total_sales = $conn->query($sql_total_sales);
-$total_sales_row = $result_total_sales->fetch_assoc();
-$total_sales = $total_sales_row['total_sales'] ?: 0;
+// ดึงไตรมาสทั้งหมดจากฐานข้อมูล
+$sql_quarters = "SELECT DISTINCT quarter FROM sales ORDER BY quarter ASC";
+$result_quarters = $conn->query($sql_quarters);
+$all_quarters = [];
+while ($row = $result_quarters->fetch_assoc()) {
+    $all_quarters[] = $row['quarter'];
+}
+
+// รับค่าปีและไตรมาสที่เลือก
+$selected_years = isset($_GET['years']) ? $_GET['years'] : [];
+$selected_quarters = isset($_GET['quarters']) ? $_GET['quarters'] : [];
+
+// กำหนดค่าเริ่มต้นเป็นทุกปีและทุกไตรมาสหากไม่ได้เลือก
+if (empty($selected_years)) {
+    $selected_years = $all_years; // ค่าเริ่มต้นคือทุกปี
+}
+
+if (empty($selected_quarters)) {
+    $selected_quarters = $all_quarters; // ค่าเริ่มต้นคือทุกไตรมาส
+}
+
+// ดึงข้อมูลยอดขายรวมแยกตามปีและไตรมาสที่เลือก
+$sales_data = [];
+foreach ($selected_years as $year) {
+    foreach ($selected_quarters as $quarter) {
+        $sql = "SELECT SUM(amount) AS total_sales 
+                FROM sales 
+                WHERE year = ? AND quarter = ?";
+        $stmt = $conn->prepare($sql);
+        $stmt->bind_param("is", $year, $quarter);
+        $stmt->execute();
+        $result = $stmt->get_result();
+        $row = $result->fetch_assoc();
+        $sales_data["$year-Q$quarter"] = $row['total_sales'] ?: 0;
+        $stmt->close();
+    }
+}
+
+// ดึงข้อมูลยอดขายของพนักงานแต่ละคนแยกตามปีและไตรมาสที่เลือก
+$sales_per_person = [];
+foreach ($selected_years as $year) {
+    foreach ($selected_quarters as $quarter) {
+        // ตรวจสอบว่าเคยเก็บข้อมูลปี-ไตรมาสนี้หรือยัง ถ้ายังให้สร้าง
+        if (!isset($sales_per_person["$year-Q$quarter"])) {
+            $sales_per_person["$year-Q$quarter"] = [];
+        }
+
+        $sql = "SELECT users.username, SUM(sales.amount) AS total_sales 
+                FROM sales 
+                INNER JOIN users ON sales.user_id = users.id
+                WHERE year = ? AND quarter = ?
+                GROUP BY users.username";
+        $stmt = $conn->prepare($sql);
+        $stmt->bind_param("is", $year, $quarter);
+        $stmt->execute();
+        $result = $stmt->get_result();
+
+        while ($row = $result->fetch_assoc()) {
+            $sales_per_person["$year-Q$quarter"][] = $row;
+        }
+        $stmt->close();
+    }
+}
 ?>
 
 <!DOCTYPE html>
@@ -42,9 +90,7 @@ $total_sales = $total_sales_row['total_sales'] ?: 0;
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <link rel="stylesheet" href="css/bootstrap.min.css">
-    <link rel="stylesheet" href="css/style.css">
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
     <title>Dashboard</title>
 </head>
 <body>
@@ -52,140 +98,153 @@ $total_sales = $total_sales_row['total_sales'] ?: 0;
     <?php include 'topnavbar.php'; ?>
 
     <div class="container mt-5">
-        <h1 class="mb-4">ยินดีต้อนรับ, <?= htmlspecialchars($username) ?>!</h1>
+        <h1 class="mb-4">Dashboard</h1>
         <p>คุณมีบทบาทเป็น: <strong><?= htmlspecialchars($role) ?></strong></p>
 
-        <!-- เลือกปีและไตรมาส -->
-        <form action="dashboard.php" method="GET" class="mb-4">
-            <div class="row">
-                <div class="col-lg-4 col-md-6">
-                    <label for="year">เลือกปี</label>
-                    <select class="form-select" name="year" id="year" onchange="this.form.submit()">
-                        <?php for ($i = 2020; $i <= date('Y'); $i++): ?>
-                            <option value="<?= $i ?>" <?= $i == $year ? 'selected' : '' ?>><?= $i ?></option>
-                        <?php endfor; ?>
-                    </select>
+        <!-- แบบฟอร์มเลือกปีและไตรมาส -->
+        <form action="dashboard.php" method="GET">
+            <label>เลือกปีที่ต้องการ:</label><br>
+            <?php foreach ($all_years as $year): ?>
+                <div class="form-check form-check-inline">
+                    <input class="form-check-input" type="checkbox" name="years[]" value="<?= $year ?>" 
+                           <?= in_array($year, $selected_years) ? 'checked' : '' ?>>
+                    <label class="form-check-label"><?= $year ?></label>
                 </div>
-                <div class="col-lg-4 col-md-6">
-                    <label for="quarter">เลือกไตรมาส</label>
-                    <select class="form-select" name="quarter" id="quarter" onchange="this.form.submit()">
-                        <option value="Q1" <?= $quarter == 'Q1' ? 'selected' : '' ?>>Q1</option>
-                        <option value="Q2" <?= $quarter == 'Q2' ? 'selected' : '' ?>>Q2</option>
-                        <option value="Q3" <?= $quarter == 'Q3' ? 'selected' : '' ?>>Q3</option>
-                        <option value="Q4" <?= $quarter == 'Q4' ? 'selected' : '' ?>>Q4</option>
-                    </select>
+            <?php endforeach; ?>
+
+            <label>เลือกไตรมาสที่ต้องการ:</label><br>
+            <?php foreach ($all_quarters as $quarter): ?>
+                <div class="form-check form-check-inline">
+                    <input class="form-check-input" type="checkbox" name="quarters[]" value="<?= $quarter ?>" 
+                           <?= in_array($quarter, $selected_quarters) ? 'checked' : '' ?>>
+                    <label class="form-check-label">Q<?= $quarter ?></label>
                 </div>
-            </div>
+            <?php endforeach; ?>
+
+            <button type="submit" class="btn btn-primary mt-3">ดูกราฟ</button>
         </form>
 
         <div class="row">
-            <!-- กราฟยอดขายรวมทั้งหมด -->
-            <div class="col-md-6 mb-4">
+            <!-- กราฟยอดขายรวมแยกตามปีและไตรมาส -->
+            <div class="col-md-6 mt-4">
                 <div class="card">
                     <div class="card-header text-center">
-                        <h5>กราฟยอดขายรวม (ปี <?= $year ?> ไตรมาส <?= $quarter ?>)</h5>
+                        <h5>กราฟยอดขายรวมแยกตามปีและไตรมาส</h5>
                     </div>
                     <div class="card-body">
-                        <canvas id="totalSalesChart" width="400" height="200"></canvas>
+                        <canvas id="salesChart" width="400" height="200"></canvas>
                     </div>
                 </div>
             </div>
 
-            <!-- กราฟยอดขายของแต่ละคน -->
-            <div class="col-md-6 mb-4">
+            <!-- กราฟยอดขายของพนักงานแต่ละคนแยกตามปีและไตรมาส -->
+            <div class="col-md-6 mt-4">
                 <div class="card">
                     <div class="card-header text-center">
-                        <h5>กราฟยอดขายของพนักงานแต่ละคน</h5>
+                        <h5>กราฟยอดขายของพนักงานแต่ละคนแยกตามปีและไตรมาส</h5>
                     </div>
                     <div class="card-body">
-                        <canvas id="individualSalesChart" width="400" height="200"></canvas>
+                        <canvas id="personSalesChart" width="400" height="200"></canvas>
                     </div>
                 </div>
             </div>
         </div>
 
-        <!-- ข้อมูลกราฟยอดขายรวมทั้งหมด -->
-        <script>
-            const ctxTotalSales = document.getElementById('totalSalesChart').getContext('2d');
-            const totalSalesChart = new Chart(ctxTotalSales, {
-                type: 'bar',
-                data: {
-                    labels: ['ยอดขายรวม'],
-                    datasets: [{
-                        label: 'ยอดขาย (บาท)',
-                        data: [<?php echo $total_sales; ?>],
-                        backgroundColor: 'rgba(54, 162, 235, 0.2)',
-                        borderColor: 'rgba(54, 162, 235, 1)',
-                        borderWidth: 1
-                    }]
-                },
-                options: {
-                    responsive: true,
-                    plugins: {
-                        legend: {
-                            position: 'top',
-                        },
-                        tooltip: {
-                            callbacks: {
-                                label: function(tooltipItem) {
-                                    return 'ยอดขาย: ' + tooltipItem.raw + ' บาท';
-                                }
+    <script>
+        // กราฟยอดขายรวมแยกตามปีและไตรมาส
+        const ctx = document.getElementById('salesChart').getContext('2d');
+        const salesChart = new Chart(ctx, {
+            type: 'line',
+            data: {
+                labels: <?= json_encode(array_keys($sales_data)) ?>,
+                datasets: [{
+                    label: 'ยอดขายรวม (บาท)',
+                    data: <?= json_encode(array_values($sales_data)) ?>,
+                    borderColor: 'rgba(75, 192, 192, 1)',
+                    backgroundColor: 'rgba(75, 192, 192, 0.2)',
+                    fill: true,
+                    tension: 0.1
+                }]
+            },
+            options: {
+                responsive: true,
+                plugins: {
+                    legend: {
+                        position: 'top',
+                    },
+                    tooltip: {
+                        callbacks: {
+                            label: function(tooltipItem) {
+                                return 'ยอดขาย: ' + tooltipItem.raw + ' บาท';
                             }
                         }
-                    },
-                    scales: {
-                        y: {
-                            beginAtZero: true,
-                            ticks: {
-                                callback: function(value) {
-                                    return value + ' บาท';
-                                }
+                    }
+                },
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        ticks: {
+                            callback: function(value) {
+                                return value + ' บาท';
                             }
                         }
                     }
                 }
-            });
+            }
+        });
 
-            const ctxIndividualSales = document.getElementById('individualSalesChart').getContext('2d');
-            const individualSalesChart = new Chart(ctxIndividualSales, {
-                type: 'bar',
-                data: {
-                    labels: <?php echo json_encode(array_column($sales_data, 'username')); ?>,
-                    datasets: [{
-                        label: 'ยอดขาย (บาท)',
-                        data: <?php echo json_encode(array_column($sales_data, 'total_sales')); ?>,
-                        backgroundColor: 'rgba(75, 192, 192, 0.2)',
-                        borderColor: 'rgba(75, 192, 192, 1)',
-                        borderWidth: 1
-                    }]
-                },
-                options: {
-                    responsive: true,
-                    plugins: {
-                        legend: {
-                            position: 'top',
-                        },
-                        tooltip: {
-                            callbacks: {
-                                label: function(tooltipItem) {
-                                    return 'ยอดขาย: ' + tooltipItem.raw + ' บาท';
-                                }
+        // กราฟยอดขายของพนักงานแต่ละคนแยกตามปีและไตรมาส
+        const ctxPerson = document.getElementById('personSalesChart').getContext('2d');
+        const personSalesData = {
+            labels: <?= json_encode(array_keys($sales_per_person)); ?>,
+            datasets: []
+        };
+
+        // เรียงข้อมูลในรูปแบบที่ต้องการ
+        <?php foreach ($sales_per_person as $year_quarter => $data): ?>
+            <?php foreach ($data as $person): ?>
+                personSalesData.datasets.push({
+                    label: '<?= $person['username'] ?> (<?= $year_quarter ?>)',
+                    data: [
+                        // คำนวณยอดขายสำหรับปีและไตรมาสนี้
+                        <?= $person['total_sales'] ?>
+                    ],
+                    borderColor: 'rgba(54, 162, 235, 1)',
+                    backgroundColor: 'rgba(54, 162, 235, 0.2)',
+                    borderWidth: 1
+                });
+            <?php endforeach; ?>
+        <?php endforeach; ?>
+
+        const personSalesChart = new Chart(ctxPerson, {
+            type: 'bar',
+            data: personSalesData,
+            options: {
+                responsive: true,
+                plugins: {
+                    legend: {
+                        position: 'top',
+                    },
+                    tooltip: {
+                        callbacks: {
+                            label: function(tooltipItem) {
+                                return 'ยอดขาย: ' + tooltipItem.raw + ' บาท';
                             }
                         }
-                    },
-                    scales: {
-                        y: {
-                            beginAtZero: true,
-                            ticks: {
-                                callback: function(value) {
-                                    return value + ' บาท';
-                                }
+                    }
+                },
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        ticks: {
+                            callback: function(value) {
+                                return value + ' บาท';
                             }
                         }
                     }
                 }
-            });
-        </script>
-    </div>
+            }
+        });
+    </script>
 </body>
 </html>
