@@ -4,7 +4,7 @@ include 'db.php';
 
 if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     $username = $_POST['username'];
-    $password = md5($_POST['password']); // เข้ารหัสรหัสผ่าน
+    $password = $_POST['password']; // เข้ารหัสรหัสผ่าน
 
     // ตรวจสอบข้อมูลผู้ใช้
     $sql = "SELECT * FROM users WHERE username = '$username' AND password = '$password'";
@@ -16,8 +16,14 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
         $_SESSION['username'] = $user['username'];
         $_SESSION['role'] = $user['role'];
 
-        // ย้ายไปหน้า Dashboard
-        header('Location: dashboard.php');
+        // ตรวจสอบบทบาทของผู้ใช้และเปลี่ยนเส้นทางไปยังหน้า Dashboard ที่เหมาะสม
+        if ($_SESSION['role'] == 'admin') {
+            // ถ้าเป็น admin ให้ไปหน้า dashboard.php
+            header('Location: dashboard.php');
+        } else if ($_SESSION['role'] == 'sales') {
+            // ถ้าเป็น sales (พนักงานขาย) ให้ไปหน้า employee_dashboard.php
+            header('Location: employee_dashboard.php');
+        }
         exit();
     } else {
         $error = "ชื่อผู้ใช้หรือรหัสผ่านไม่ถูกต้อง!";

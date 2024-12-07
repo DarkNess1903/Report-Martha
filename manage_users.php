@@ -11,12 +11,12 @@ if (!isset($_SESSION['user_id']) || $_SESSION['role'] != 'admin') {
 // เพิ่มข้อมูลพนักงานใหม่
 if (isset($_POST['add_user'])) {
     $username = $_POST['username'];
-    $password = password_hash($_POST['password'], PASSWORD_DEFAULT);
+    $password = $_POST['password'];
 
     // บทบาทจะถูกกำหนดเป็น 'sales' เท่านั้น
     $role = 'sales';
 
-    $sql = "INSERT INTO users (username, password, role) VALUES ('$username', '$password', '$role')";
+    $sql = "INSERT INTO users (username, password, role, created_at) VALUES ('$username', '$password', '$role', NOW())";
     if ($conn->query($sql) === TRUE) {
         $success_message = "เพิ่มพนักงานใหม่สำเร็จ";
     } else {
@@ -30,6 +30,22 @@ if (isset($_GET['delete_id'])) {
     $sql = "DELETE FROM users WHERE id = $delete_id";
     if ($conn->query($sql) === TRUE) {
         $success_message = "ลบพนักงานสำเร็จ";
+    } else {
+        $error_message = "เกิดข้อผิดพลาด: " . $conn->error;
+    }
+}
+
+// แก้ไขพนักงาน
+if (isset($_POST['edit_user'])) {
+    $user_id = $_POST['user_id'];
+    $username = $_POST['username'];
+    
+    // อัปเดตข้อมูลผู้ใช้
+    $sql = "UPDATE users SET username = ? WHERE id = ?";
+    $stmt = $conn->prepare($sql);
+    $stmt->bind_param("si", $username, $user_id);
+    if ($stmt->execute()) {
+        $success_message = "ข้อมูลพนักงานได้รับการอัปเดต";
     } else {
         $error_message = "เกิดข้อผิดพลาด: " . $conn->error;
     }
@@ -65,18 +81,35 @@ $result = $conn->query($sql);
             </div>
         <?php endif; ?>
 
-        <!-- ฟอร์มเพิ่มพนักงานใหม่ -->
-        <form action="manage_users.php" method="POST" class="mt-4">
-            <div class="mb-3">
-                <label for="username" class="form-label">ชื่อผู้ใช้</label>
-                <input type="text" class="form-control" name="username" required>
+        <!-- ปุ่มเพิ่มพนักงาน -->
+        <button class="btn btn-success mb-3" data-bs-toggle="modal" data-bs-target="#addUserModal">
+            <i class="fas fa-user-plus"></i> เพิ่มพนักงาน
+        </button>
+
+        <!-- Modal ฟอร์มเพิ่มพนักงาน -->
+        <div class="modal fade" id="addUserModal" tabindex="-1" aria-labelledby="addUserModalLabel" aria-hidden="true">
+            <div class="modal-dialog">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title" id="addUserModalLabel">เพิ่มพนักงานใหม่</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                    </div>
+                    <div class="modal-body">
+                        <form action="manage_users.php" method="POST">
+                            <div class="mb-3">
+                                <label for="username" class="form-label">ชื่อผู้ใช้</label>
+                                <input type="text" class="form-control" name="username" required>
+                            </div>
+                            <div class="mb-3">
+                                <label for="password" class="form-label">รหัสผ่าน</label>
+                                <input type="password" class="form-control" name="password" required>
+                            </div>
+                            <button type="submit" name="add_user" class="btn btn-primary">เพิ่มพนักงาน</button>
+                        </form>
+                    </div>
+                </div>
             </div>
-            <div class="mb-3">
-                <label for="password" class="form-label">รหัสผ่าน</label>
-                <input type="password" class="form-control" name="password" required>
-            </div>
-            <button type="submit" name="add_user" class="btn btn-primary">เพิ่มพนักงาน</button>
-        </form>
+        </div>
 
         <hr>
 
@@ -86,6 +119,7 @@ $result = $conn->query($sql);
                 <tr>
                     <th>#</th>
                     <th>ชื่อผู้ใช้</th>
+                    <th>เวลาที่สร้าง</th>
                     <th>จัดการ</th>
                 </tr>
             </thead>
@@ -94,7 +128,36 @@ $result = $conn->query($sql);
                     <tr>
                         <td><?= $row['id'] ?></td>
                         <td><?= htmlspecialchars($row['username']) ?></td>
+                        <td><?= date('d-m-Y H:i:s', strtotime($row['created_at'])) ?></td>
                         <td>
+                            <!-- ปุ่มแก้ไข -->
+                            <button class="btn btn-warning" data-bs-toggle="modal" data-bs-target="#editUserModal<?= $row['id'] ?>">
+                                <i class="fas fa-edit"></i> แก้ไข
+                            </button>
+
+                            <!-- Modal ฟอร์มแก้ไขพนักงาน -->
+                            <div class="modal fade" id="editUserModal<?= $row['id'] ?>" tabindex="-1" aria-labelledby="editUserModalLabel" aria-hidden="true">
+                                <div class="modal-dialog">
+                                    <div class="modal-content">
+                                        <div class="modal-header">
+                                            <h5 class="modal-title" id="editUserModalLabel">แก้ไขข้อมูลพนักงาน</h5>
+                                            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                                        </div>
+                                        <div class="modal-body">
+                                            <form action="manage_users.php" method="POST">
+                                                <input type="hidden" name="user_id" value="<?= $row['id'] ?>">
+                                                <div class="mb-3">
+                                                    <label for="username" class="form-label">ชื่อผู้ใช้</label>
+                                                    <input type="text" class="form-control" name="username" value="<?= htmlspecialchars($row['username']) ?>" required>
+                                                </div>
+                                                <button type="submit" name="edit_user" class="btn btn-primary">บันทึกการแก้ไข</button>
+                                            </form>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- ปุ่มลบ -->
                             <a href="manage_users.php?delete_id=<?= $row['id'] ?>" class="btn btn-danger" onclick="return confirm('คุณต้องการลบพนักงานนี้?')">ลบ</a>
                         </td>
                     </tr>
@@ -102,5 +165,8 @@ $result = $conn->query($sql);
             </tbody>
         </table>
     </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.11.6/dist/umd/popper.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/js/bootstrap.min.js"></script>
 </body>
 </html>

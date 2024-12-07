@@ -16,6 +16,14 @@ $stmt->bind_param("i", $user_id);
 $stmt->execute();
 $result = $stmt->get_result();
 $stmt->close();
+
+// แปลงไตรมาสเป็นเดือน
+$quarter_to_month = [
+    '1' => 'มกราคม',
+    '2' => 'เมษายน',
+    '3' => 'กรกฎาคม',
+    '4' => 'ตุลาคม'
+];
 ?>
 
 <!DOCTYPE html>
@@ -28,6 +36,8 @@ $stmt->close();
     <title>ดูข้อมูลยอดขาย</title>
 </head>
 <body>
+    <?php include 'topnavbar.php'; ?>
+
     <div class="container mt-5">
         <h1 class="mb-4">ข้อมูลยอดขายของคุณ</h1>
         <table class="table table-bordered">
@@ -35,7 +45,7 @@ $stmt->close();
                 <tr>
                     <th>#</th>
                     <th>ปี</th>
-                    <th>ไตรมาส</th>
+                    <th>เดือน</th>
                     <th>ยอดขาย (บาท)</th>
                 </tr>
             </thead>
@@ -45,7 +55,7 @@ $stmt->close();
                         <tr>
                             <td><?= htmlspecialchars($row['id']) ?></td>
                             <td><?= htmlspecialchars($row['year']) ?></td>
-                            <td><?= htmlspecialchars($row['quarter']) ?></td>
+                            <td><?= htmlspecialchars($quarter_to_month[$row['quarter']]) ?></td>
                             <td><?= number_format($row['amount'], 2) ?></td>
                         </tr>
                     <?php endwhile; ?>
@@ -56,7 +66,7 @@ $stmt->close();
                 <?php endif; ?>
             </tbody>
         </table>
-        <a href="dashboard.php" class="btn btn-secondary">กลับไปยังหน้าหลัก</a>
+        <a href="employee_dashboard.php" class="btn btn-secondary">กลับไปยังหน้าหลัก</a>
     </div>
 </body>
 </html>

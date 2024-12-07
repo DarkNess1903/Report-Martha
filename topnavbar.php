@@ -6,11 +6,12 @@
         </button>
         <div class="collapse navbar-collapse" id="navbarNav">
             <ul class="navbar-nav ms-auto">
-                <li class="nav-item">
-                    <a class="nav-link text-white" href="dashboard.php">Dashboard</a>
-                </li>
                 <?php if (isset($_SESSION['role'])): ?>
                     <?php if ($_SESSION['role'] == 'admin'): ?>
+                        <!-- เมนูสำหรับ Admin -->
+                        <li class="nav-item">
+                            <a class="nav-link text-white" href="dashboard.php">Dashboard</a>
+                        </li>
                         <li class="nav-item">
                             <a class="nav-link text-white" href="manage_sales.php">จัดการยอดขาย</a>
                         </li>
@@ -18,12 +19,16 @@
                             <a class="nav-link text-white" href="manage_users.php">จัดการพนักงาน</a>
                         </li>
                     <?php elseif ($_SESSION['role'] == 'sales'): ?>
+                        <!-- เมนูสำหรับ Sales -->
+                        <li class="nav-item">
+                            <a class="nav-link text-white" href="employee_dashboard.php">Dashboard</a>
+                        </li>
                         <li class="nav-item">
                             <a class="nav-link text-white" href="view_sales.php">ดูยอดขายของคุณ</a>
                         </li>
                     <?php endif; ?>
                 <?php endif; ?>
-                
+
                 <!-- แสดงชื่อผู้ใช้งาน พร้อมไอคอน -->
                 <?php if (isset($_SESSION['username'])): ?>
                     <li class="nav-item d-flex align-items-center">
@@ -32,7 +37,9 @@
                             <?= htmlspecialchars($_SESSION['username']) ?>
                         </span>
                     </li>
-                <?php endif; ?>      
+                <?php endif; ?>
+
+                <!-- ปุ่มออกจากระบบ -->
                 <li class="nav-item">
                     <a class="btn btn-outline-light" href="logout.php">ออกจากระบบ</a>
                 </li>

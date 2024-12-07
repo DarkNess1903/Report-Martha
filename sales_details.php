@@ -44,10 +44,12 @@ if (isset($_POST['add_sale'])) {
 
     if ($stmt->execute()) {
         $success_message = "เพิ่มข้อมูลยอดขายสำเร็จ";
+        // รีเฟรชหน้าและส่ง user_id กลับไป
+        header('Location: ' . $_SERVER['PHP_SELF'] . '?user_id=' . $user_id);
+        exit();
     } else {
         $error_message = "เกิดข้อผิดพลาด: " . $stmt->error;
-    }
-
+    }    
     $stmt->close();
 }
 ?>
@@ -112,7 +114,8 @@ if (isset($_POST['add_sale'])) {
                                                             data-bs-target="#editSaleModal" 
                                                             data-year="<?= $year ?>" 
                                                             data-quarter="<?= $quarter ?>" 
-                                                            data-amount="<?= $amount ?>">
+                                                            data-amount="<?= $amount ?>" 
+                                                            data-user-id="<?= $user_id ?>">
                                                         แก้ไข
                                                     </button>
 
@@ -224,28 +227,23 @@ if (isset($_POST['add_sale'])) {
 
     <!-- สคริปต์แสดงผลกราฟ -->
     <script>
-        document.addEventListener('DOMContentLoaded', function() {
-        // ดึง Modal แก้ไขยอดขาย
-        var editSaleModal = document.getElementById('editSaleModal');
-        
-        // เมื่อ Modal ถูกแสดง
+    // เมื่อเปิด modal แก้ไข
+    const editSaleModal = document.getElementById('editSaleModal');
         editSaleModal.addEventListener('show.bs.modal', function(event) {
-            // ปุ่มที่กดเรียก Modal
-            var button = event.relatedTarget;
+            // รับค่าจากปุ่มที่ถูกคลิก
+            const button = event.relatedTarget; 
+            const year = button.getAttribute('data-year');
+            const quarter = button.getAttribute('data-quarter');
+            const amount = button.getAttribute('data-amount');
+            const userId = button.getAttribute('data-user-id');
 
-            // ดึงค่าจาก data-* attributes
-            var year = button.getAttribute('data-year');
-            var quarter = button.getAttribute('data-quarter');
-            var amount = button.getAttribute('data-amount');
-
-            // เติมข้อมูลในฟอร์ม
-            editSaleModal.querySelector('#editUserId').value = <?= $user_id ?>; // ID ของผู้ใช้งาน
-            editSaleModal.querySelector('#editOldYear').value = year; // ปีเดิม
-            editSaleModal.querySelector('#editOldQuarter').value = quarter; // ไตรมาสเดิม
-            editSaleModal.querySelector('#editYear').value = year; // ปีใหม่
-            editSaleModal.querySelector('#editQuarter').value = quarter; // ไตรมาสใหม่
-            editSaleModal.querySelector('#editAmount').value = amount; // ยอดขายใหม่
-        });
+            // กำหนดค่าให้กับฟอร์มใน modal
+            document.getElementById('editYear').value = year;
+            document.getElementById('editQuarter').value = quarter;
+            document.getElementById('editAmount').value = amount;
+            document.getElementById('editUserId').value = userId;
+            document.getElementById('editOldYear').value = year;
+            document.getElementById('editOldQuarter').value = quarter;
     });
 
         var ctx = document.getElementById('salesChart').getContext('2d');
