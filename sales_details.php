@@ -213,13 +213,13 @@ if (isset($_POST['add_sale'])) {
                     </div>
                     <div class="card-body">
                         <div class="table-responsive">
-                            <table id="tabledata" class="table table-striped table-bordered">
+                        <table id="tabledata" class="table table-striped table-bordered">
                                 <thead style="font-size: small;">
                                     <tr>
                                         <th>ปี</th>
                                         <th>ไตรมาส</th>
                                         <th>ยอดขาย (บาท)</th>
-                                        <th>การจัดการ</th>
+                                        <th>การจัดการ</th> <!-- คอลัมน์ที่ 4 -->
                                     </tr>
                                 </thead>
                                 <tbody>
@@ -251,7 +251,7 @@ if (isset($_POST['add_sale'])) {
                                                                 ลบ
                                                             </button>
                                                         </form>
-                                                    </td>
+                                                    </td> <!-- ปิด td สำหรับ "การจัดการ" -->
                                                 </tr>
                                             <?php endforeach; ?>
                                         <?php endforeach; ?>
