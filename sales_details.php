@@ -11,65 +11,17 @@ if (!isset($_SESSION['user_id']) || $_SESSION['role'] != 'admin') {
 // รับค่า user_id จาก URL
 $user_id = isset($_GET['user_id']) ? $_GET['user_id'] : 0;
 
-// ดึงข้อมูลปีทั้งหมดจากฐานข้อมูล
-$sql_years = "SELECT DISTINCT year FROM sales ORDER BY year ASC";
-$result_years = $conn->query($sql_years);
-$all_years = [];
-while ($row = $result_years->fetch_assoc()) {
-    $all_years[] = $row['year'];
-}
-
-// ดึงข้อมูลไตรมาสทั้งหมดจากฐานข้อมูล
-$sql_quarters = "SELECT DISTINCT quarter FROM sales ORDER BY quarter ASC";
-$result_quarters = $conn->query($sql_quarters);
-$all_quarters = [];
-while ($row = $result_quarters->fetch_assoc()) {
-    $all_quarters[] = $row['quarter'];
-}
-
-// รับค่าปีและไตรมาสที่เลือก
-$selected_years = isset($_GET['years']) ? $_GET['years'] : [];
-$selected_quarters = isset($_GET['quarters']) ? $_GET['quarters'] : [];
-
-// กำหนดค่าเริ่มต้นเป็นทุกปีและทุกไตรมาสหากไม่ได้เลือก
-if (empty($selected_years)) {
-    $selected_years = $all_years; // ค่าเริ่มต้นคือทุกปี
-}
-
-if (empty($selected_quarters)) {
-    $selected_quarters = $all_quarters; // ค่าเริ่มต้นคือทุกไตรมาส
-}
-
-// สร้าง SQL คำสั่ง IN ให้ถูกต้อง
-$placeholders_years = implode(',', array_fill(0, count($selected_years), '?'));
-$placeholders_quarters = implode(',', array_fill(0, count($selected_quarters), '?'));
-
-// ดึงข้อมูลยอดขายของพนักงานตามปีและไตรมาสที่เลือก
+// ดึงข้อมูลยอดขายของพนักงาน
 $sql = "SELECT sales.year, sales.quarter, SUM(sales.amount) AS total_sales 
         FROM sales 
         WHERE sales.user_id = ? 
-        AND sales.year IN ($placeholders_years)
-        AND sales.quarter IN ($placeholders_quarters)
         GROUP BY sales.year, sales.quarter
         ORDER BY sales.year ASC, sales.quarter ASC";
-
 $stmt = $conn->prepare($sql);
-
-// เตรียมพารามิเตอร์สำหรับ bind_param
-$params = array($user_id);
-$params = array_merge($params, $selected_years, $selected_quarters);
-
-// สร้างชนิดของพารามิเตอร์ที่ใช้
-$types = str_repeat('i', count($params));
-
-// bind parameters
-$stmt->bind_param($types, ...$params);
-
-// Execute the query
+$stmt->bind_param("i", $user_id);
 $stmt->execute();
 $result = $stmt->get_result();
 $stmt->close();
-
 
 if ($result->num_rows > 0) {
     $sales_data = [];
@@ -79,6 +31,9 @@ if ($result->num_rows > 0) {
 } else {
     $sales_data = [];
 }
+
+// กำหนดค่า $years โดยการดึงคีย์ของปีจากข้อมูลยอดขาย
+$years = array_keys($sales_data);
 
 // เพิ่มข้อมูลยอดขายใหม่
 if (isset($_POST['add_sale'])) {
@@ -92,12 +47,10 @@ if (isset($_POST['add_sale'])) {
 
     if ($stmt->execute()) {
         $success_message = "เพิ่มข้อมูลยอดขายสำเร็จ";
-        // รีเฟรชหน้าและส่ง user_id กลับไป
-        header('Location: ' . $_SERVER['PHP_SELF'] . '?user_id=' . $user_id);
-        exit();
     } else {
         $error_message = "เกิดข้อผิดพลาด: " . $stmt->error;
-    }    
+    }
+
     $stmt->close();
 }
 ?>
@@ -110,34 +63,7 @@ if (isset($_POST['add_sale'])) {
     <link rel="stylesheet" href="css/bootstrap.min.css">
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
-
-  <!-- Favicons -->
-  <link href="assets/img/ma2.png" rel="icon">
-  <link href="assets/img/ma2.png" rel="apple-touch-icon">
-
-  <!-- ลิงค์ของตาราง -->
-  <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.10.0/css/all.min.css" rel="stylesheet">
-  <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.4.1/font/bootstrap-icons.css" rel="stylesheet">
-
-
-  <!-- ไลบารี่ไอคอน -->
-  <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.10.0/css/all.min.css" rel="stylesheet">
-  <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.4.1/font/bootstrap-icons.css" rel="stylesheet">
-
-
-  <!-- Google Fonts -->
-  <link href="https://fonts.gstatic.com" rel="preconnect">
-  <link href="https://fonts.googleapis.com/css?family=Open+Sans:300,300i,400,400i,600,600i,700,700i|Nunito:300,300i,400,400i,600,600i,700,700i|Poppins:300,300i,400,400i,500,500i,600,600i,700,700i" rel="stylesheet">
-
-
-  <!-- Template Main CSS File -->
-  <link href="assets/css/style.css" rel="stylesheet">
-  <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.10.0/css/all.min.css" rel="stylesheet">
-  <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.4.1/font/bootstrap-icons.css" rel="stylesheet">
-  <link href="//cdn.datatables.net/1.13.4/css/jquery.dataTables.min.css" rel="stylesheet">
- <!-- จบลิงค์ของตาราง -->
-
-    <title>ข้อมูลยอดขายของพนักงาน บริษัท มาร์ธา กรุ๊ปจำกัด </title>
+    <title>ข้อมูลยอดขายของพนักงาน</title>
 </head>
 <body>
     <?php include 'topnavbar.php'; ?>
@@ -145,142 +71,129 @@ if (isset($_POST['add_sale'])) {
     <div class="container mt-5">
         <h1 class="text-center mb-4">ข้อมูลยอดขายของพนักงาน</h1>
 
-        <!-- แบบฟอร์มเลือกปีและไตรมาส -->
-            <div class="container mt-4">
-                <h2>เลือกปีและไตรมาสเพื่อดูกราฟ</h2>
-                <form action="sales_details.php" method="GET">
-                    <div class="border p-4 rounded">
-                        <div class="row">
-                            <!-- ฟอร์มเลือกปี -->
-                            <div class="col-md-6 mb-3">
-                                <label class="form-label">เลือกปีที่ต้องการ:</label>
-                                <div class="d-flex flex-wrap">
-                                    <?php foreach ($all_years as $year): ?>
-                                        <div class="form-check form-check-inline me-3">
-                                            <input class="form-check-input" type="checkbox" name="years[]" value="<?= $year ?>" 
-                                                <?= in_array($year, $selected_years) ? 'checked' : '' ?>>
-                                            <label class="form-check-label"><?= $year ?></label>
-                                        </div>
-                                    <?php endforeach; ?>
-                                </div>
-                            </div>
-
-                            <!-- ฟอร์มเลือกไตรมาส -->
-                            <div class="col-md-6 mb-3">
-                                <label class="form-label">เลือกไตรมาสที่ต้องการ:</label>
-                                <div class="d-flex flex-wrap">
-                                    <?php 
-                                    $quarters = [
-                                        1 => 'มกราคม',
-                                        2 => 'เมษายน',
-                                        3 => 'กรกฎาคม',
-                                        4 => 'ตุลาคม'
-                                    ];
-                                    foreach ($quarters as $quarter => $months): ?>
-                                        <div class="form-check form-check-inline me-3">
-                                            <input class="form-check-input" type="checkbox" name="quarters[]" value="<?= $quarter ?>" 
-                                                <?= in_array($quarter, $selected_quarters) ? 'checked' : '' ?>>
-                                            <label class="form-check-label"><?= $months ?></label>
-                                        </div>
-                                    <?php endforeach; ?>
-                                </div>
-                            </div>
-                            <button type="submit" class="btn btn-primary mt-3">ดูกราฟ</button>
+        <div class="row mb-3 border p-3 align-items-center">
+            <!-- เลือกปี -->
+            <div class="col-md-5">
+                <label class="form-label">เลือกปี:</label>
+                <div class="d-flex flex-wrap">
+                    <?php foreach ($years as $year): ?>
+                        <div class="form-check form-check-inline me-3">
+                            <input class="form-check-input" type="checkbox" name="years[]" value="<?= $year ?>" checked>
+                            <label class="form-check-label"><?= $year ?></label>
                         </div>
+                    <?php endforeach; ?>
+                </div>
+            </div>
+
+            <!-- เลือกไตรมาส (แสดงเป็นเดือน) -->
+            <div class="col-md-5">
+                <label class="form-label">เลือกไตรมาส:</label>
+                <div class="d-flex flex-wrap">
+                    <?php
+                    // กำหนดเดือนที่แสดงสำหรับแต่ละไตรมาส
+                    $quarters = [
+                        1 => 'มกราคม',
+                        2 => 'เมษายน',
+                        3 => 'กรกฎาคม',
+                        4 => 'ตุลาคม'
+                    ];
+                    ?>
+                    <?php foreach ($quarters as $quarter => $label): ?>
+                        <div class="form-check form-check-inline me-3">
+                            <input class="form-check-input" type="checkbox" name="quarters[]" value="<?= $quarter ?>" checked>
+                            <label class="form-check-label"><?= $label ?></label>
+                        </div>
+                    <?php endforeach; ?>
+                </div>
+            </div>
+
+            <!-- ปุ่มเลือกเพื่ออัปเดตกกราฟ -->
+            <div class="text-center mt-3">
+                <button class="btn btn-primary" id="updateChart">อัปเดตกกราฟ</button>
+            </div>
+        </div>
+
+        <div class="row g-4">
+            <!-- กราฟ -->
+            <div class="col-md-6">
+                <div class="card">
+                    <div class="card-header bg-primary text-white">
+                        กราฟแสดงยอดขาย
                     </div>
-                </form>
-
-                <div class="row g-4">
-                    <!-- กราฟ -->
-                    <div class="col-md-12">
-                        <div class="card">
-                            <div class="card-header bg-primary text-white">
-                                กราฟแสดงยอดขาย
-                            </div>
-                            <div class="card-body">
-                                <canvas id="salesChart"></canvas>
-                            </div>
-                        </div>
+                    <div class="card-body">
+                        <canvas id="salesChart"></canvas>
                     </div>
                 </div>
             </div>
-                        
+
             <!-- ตาราง -->
-            <div class="col-md-12">
+            <div class="col-md-6">
                 <div class="card">
                     <div class="card-header bg-primary text-white">
                         ตารางยอดขาย
                     </div>
                     <div class="card-body">
-                        <div class="table-responsive">
-                        <table id="tabledata" class="table table-striped table-bordered">
-                                <thead style="font-size: small;">
-                                    <tr>
-                                        <th>ปี</th>
-                                        <th>ไตรมาส</th>
-                                        <th>ยอดขาย (บาท)</th>
-                                        <th>การจัดการ</th> <!-- คอลัมน์ที่ 4 -->
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    <?php if (!empty($sales_data)): ?>
-                                        <?php foreach ($sales_data as $year => $quarters): ?>
-                                            <?php foreach ($quarters as $quarter => $amount): ?>
-                                                <tr>
-                                                    <td><?= $year ?></td>
-                                                    <td><?= "Q" . $quarter ?></td> <!-- แสดงไตรมาส -->
-                                                    <td><?= number_format($amount, 2) ?> บาท</td>
-                                                    <td>
-                                                        <!-- ปุ่มแก้ไข -->
-                                                        <button class="btn btn-warning btn-sm" 
-                                                                data-bs-toggle="modal" 
-                                                                data-bs-target="#editSaleModal" 
-                                                                data-year="<?= $year ?>" 
-                                                                data-quarter="<?= $quarter ?>" 
-                                                                data-amount="<?= $amount ?>" 
-                                                                data-user-id="<?= $user_id ?>">
-                                                            แก้ไข
-                                                        </button>
+                        <table class="table table-bordered">
+                            <thead class="table-dark">
+                                <tr>
+                                    <th>ปี</th>
+                                    <th>ไตรมาส</th>
+                                    <th>ยอดขาย (บาท)</th>
+                                    <th>การจัดการ</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <?php if (!empty($sales_data)): ?>
+                                    <?php foreach ($sales_data as $year => $quarters): ?>
+                                        <?php foreach ($quarters as $quarter => $amount): ?>
+                                            <tr>
+                                                <td><?= $year ?></td>
+                                                <td><?= $quarter ?></td>
+                                                <td><?= number_format($amount, 2) ?> บาท</td>
+                                                <td>
+                                                    <!-- ปุ่มแก้ไข -->
+                                                    <button class="btn btn-warning btn-sm" 
+                                                            data-bs-toggle="modal" 
+                                                            data-bs-target="#editSaleModal" 
+                                                            data-year="<?= $year ?>" 
+                                                            data-quarter="<?= $quarter ?>" 
+                                                            data-amount="<?= $amount ?>">
+                                                        แก้ไข
+                                                    </button>
 
-                                                        <!-- ปุ่มลบ -->
-                                                        <form action="delete_sale.php" method="POST" class="d-inline">
-                                                            <input type="hidden" name="user_id" value="<?= $user_id ?>">
-                                                            <input type="hidden" name="year" value="<?= $year ?>">
-                                                            <input type="hidden" name="quarter" value="<?= $quarter ?>">
-                                                            <button type="submit" class="btn btn-danger btn-sm" onclick="return confirm('คุณต้องการลบยอดขายนี้หรือไม่?')">
-                                                                ลบ
-                                                            </button>
-                                                        </form>
-                                                    </td> <!-- ปิด td สำหรับ "การจัดการ" -->
-                                                </tr>
-                                            <?php endforeach; ?>
+                                                    <!-- ปุ่มลบ -->
+                                                    <form action="delete_sale.php" method="POST" class="d-inline">
+                                                        <input type="hidden" name="user_id" value="<?= $user_id ?>">
+                                                        <input type="hidden" name="year" value="<?= $year ?>">
+                                                        <input type="hidden" name="quarter" value="<?= $quarter ?>">
+                                                        <button type="submit" class="btn btn-danger btn-sm" onclick="return confirm('คุณต้องการลบยอดขายนี้หรือไม่?')">
+                                                            ลบ
+                                                        </button>
+                                                    </form>
+                                                </td>
+                                            </tr>
                                         <?php endforeach; ?>
-                                    <?php else: ?>
-                                        <tr>
-                                            <td colspan="4" class="text-center">ไม่มีข้อมูลยอดขายสำหรับพนักงานคนนี้</td>
-                                        </tr>
-                                    <?php endif; ?>
-                                </tbody>
-                            </table>
-                        </div>
+                                    <?php endforeach; ?>
+                                <?php else: ?>
+                                    <tr>
+                                        <td colspan="4" class="text-center">ไม่มีข้อมูลยอดขายสำหรับพนักงานคนนี้</td>
+                                    </tr>
+                                <?php endif; ?>
+                            </tbody>
+                        </table>
+
+                        <!-- ปุ่มเพิ่มยอดขาย -->
+                        <button class="btn btn-primary mt-3" data-bs-toggle="modal" data-bs-target="#addSaleModal">เพิ่มยอดขาย</button>
                     </div>
                 </div>
             </div>
-            <!-- จบตาราง -->
-
-                    <!-- ปุ่มเพิ่มยอดขาย -->
-                    <button class="btn btn-primary mt-3" data-bs-toggle="modal" data-bs-target="#addSaleModal">เพิ่มยอดขาย</button>
-                </div>
-            </div>
         </div>
-    </div>
 
         <!-- ปุ่มกลับไปหน้าหลัก -->
         <div class="text-center mt-4">
             <a href="manage_sales.php" class="btn btn-secondary">กลับไปที่หน้าหลัก</a>
         </div>
     </div>
-    <br>
 
     <!-- Modal เพิ่มยอดขาย -->
     <div class="modal fade" id="addSaleModal" tabindex="-1" aria-labelledby="addSaleModalLabel" aria-hidden="true">
@@ -299,10 +212,10 @@ if (isset($_POST['add_sale'])) {
                         <div class="mb-3">
                             <label for="quarter" class="form-label">ไตรมาส</label>
                             <select class="form-select" name="quarter" required>
-                                <option value="1">ไตรมาส 1</option>
-                                <option value="2">ไตรมาส 2</option>
-                                <option value="3">ไตรมาส 3</option>
-                                <option value="4">ไตรมาส 4</option>
+                                <option value="1">มกราคม</option>
+                                <option value="2">เมษายน</option>
+                                <option value="3">กรกฎาคม</option>
+                                <option value="4">ตุลาคม</option>
                             </select>
                         </div>
                         <div class="mb-3">
@@ -337,10 +250,10 @@ if (isset($_POST['add_sale'])) {
                         <div class="mb-3">
                             <label for="editQuarter" class="form-label">ไตรมาส</label>
                             <select class="form-select" name="new_quarter" id="editQuarter" required>
-                                <option value="1">ไตรมาส 1</option>
-                                <option value="2">ไตรมาส 2</option>
-                                <option value="3">ไตรมาส 3</option>
-                                <option value="4">ไตรมาส 4</option>
+                                <option value="1">มกราคม</option>
+                                <option value="2">เมษายน</option>
+                                <option value="3">กรกฎาคม</option>
+                                <option value="4">ตุลาคม</option>
                             </select>
                         </div>
                         <div class="mb-3">
@@ -356,53 +269,84 @@ if (isset($_POST['add_sale'])) {
 
     <!-- สคริปต์แสดงผลกราฟ -->
     <script>
-    // เมื่อเปิด modal แก้ไข
-    const editSaleModal = document.getElementById('editSaleModal');
+        document.addEventListener('DOMContentLoaded', function() {
+        // ดึง Modal แก้ไขยอดขาย
+        var editSaleModal = document.getElementById('editSaleModal');
+        
+        // เมื่อ Modal ถูกแสดง
         editSaleModal.addEventListener('show.bs.modal', function(event) {
-            // รับค่าจากปุ่มที่ถูกคลิก
-            const button = event.relatedTarget; 
-            const year = button.getAttribute('data-year');
-            const quarter = button.getAttribute('data-quarter');
-            const amount = button.getAttribute('data-amount');
-            const userId = button.getAttribute('data-user-id');
+            // ปุ่มที่กดเรียก Modal
+            var button = event.relatedTarget;
 
-            // กำหนดค่าให้กับฟอร์มใน modal
-            document.getElementById('editYear').value = year;
-            document.getElementById('editQuarter').value = quarter;
-            document.getElementById('editAmount').value = amount;
-            document.getElementById('editUserId').value = userId;
-            document.getElementById('editOldYear').value = year;
-            document.getElementById('editOldQuarter').value = quarter;
+            // ดึงค่าจาก data-* attributes
+            var year = button.getAttribute('data-year');
+            var quarter = button.getAttribute('data-quarter');
+            var amount = button.getAttribute('data-amount');
+
+            // เติมข้อมูลในฟอร์ม
+            editSaleModal.querySelector('#editUserId').value = <?= $user_id ?>; // ID ของผู้ใช้งาน
+            editSaleModal.querySelector('#editOldYear').value = year; // ปีเดิม
+            editSaleModal.querySelector('#editOldQuarter').value = quarter; // ไตรมาสเดิม
+            editSaleModal.querySelector('#editYear').value = year; // ปีใหม่
+            editSaleModal.querySelector('#editQuarter').value = quarter; // ไตรมาสใหม่
+            editSaleModal.querySelector('#editAmount').value = amount; // ยอดขายใหม่
+        });
     });
-
+    document.addEventListener('DOMContentLoaded', function() {
     var ctx = document.getElementById('salesChart').getContext('2d');
+
+    // ตัวแปรในการเก็บข้อมูลกราฟ
     var salesData = {
-        labels: <?php 
-            $labels = [];
-            foreach ($sales_data as $year => $quarters) {
-                foreach ($quarters as $quarter => $amount) {
-                    $labels[] = "ปี $year Q$quarter";
-                }
-            }
-            echo json_encode($labels);
-        ?>,
-        datasets: [{
-            label: 'ยอดขาย (บาท)',
-            data: <?php 
-                $data = [];
-                foreach ($sales_data as $quarters) {
-                    foreach ($quarters as $amount) {
-                        $data[] = $amount;
-                    }
-                }
-                echo json_encode($data);
-            ?>,
-            backgroundColor: 'rgba(75, 192, 192, 0.2)',
-            borderColor: 'rgba(75, 192, 192, 1)',
-            borderWidth: 1
-        }]
+        labels: ['มกราคม', 'เมษายน', 'กรกฎาคม', 'ตุลาคม'], // แกน X แสดงเป็นเดือน
+        datasets: []
     };
 
+    // ฟังก์ชันสำหรับอัปเดตกกราฟ
+    function updateChart() {
+        var selectedYears = Array.from(document.querySelectorAll('input[name="years[]"]:checked')).map(el => el.value);
+        var selectedQuarters = Array.from(document.querySelectorAll('input[name="quarters[]"]:checked')).map(el => el.value);
+
+        // เตรียมข้อมูลจาก PHP
+        var salesDataFromPHP = <?php echo json_encode($sales_data); ?>;
+
+        // เตรียมข้อมูลสำหรับ datasets ใหม่
+        var datasets = [];
+
+        // สร้างข้อมูลยอดขายสำหรับแต่ละปี
+        for (var i = 0; i < selectedYears.length; i++) {
+            var year = selectedYears[i];
+            var dataset = {
+                label: 'ปี ' + year,
+                data: [0, 0, 0, 0], // เตรียมข้อมูลยอดขายให้ตรงกับไตรมาส Q1, Q2, Q3, Q4
+                backgroundColor: 'rgba(75, 192, 192, 0.2)',
+                borderColor: 'rgba(75, 192, 192, 1)',
+                borderWidth: 1
+            };
+
+            // กรณีที่มีข้อมูลยอดขายสำหรับปีนั้นๆ
+            if (salesDataFromPHP[year]) {
+                for (var quarter in salesDataFromPHP[year]) {
+                    if (selectedQuarters.includes(quarter.toString())) {
+                        var amount = salesDataFromPHP[year][quarter];
+                        dataset.data[quarter - 1] = amount; // แทรกยอดขายในตำแหน่งของไตรมาส
+                    } else {
+                        dataset.data[quarter - 1] = 0; // ถ้าไม่เลือกไตรมาสนี้ให้แสดง 0
+                    }
+                }
+            }
+
+            // เพิ่ม dataset ที่ตรงกับการเลือกปี
+            datasets.push(dataset);
+        }
+
+        // รีเซ็ต datasets ก่อน
+        salesData.datasets = datasets;
+
+        // รีเฟรชกราฟ
+        salesChart.update();
+    }
+
+    // สร้างกราฟเริ่มต้น
     var salesChart = new Chart(ctx, {
         type: 'bar',
         data: salesData,
@@ -419,37 +363,23 @@ if (isset($_POST['add_sale'])) {
                 x: {
                     title: {
                         display: true,
-                        text: 'ช่วงเวลา'
+                        text: 'ไตรมาส'
                     }
                 }
             }
         }
     });
+
+    // เรียกใช้ฟังก์ชัน updateChart ในการแสดงข้อมูลทั้งหมดเมื่อโหลดหน้า
+    updateChart();
+
+    // ฟังการคลิกปุ่มอัปเดตกกราฟ
+    document.getElementById('updateChart').addEventListener('click', function() {
+        updateChart();
+    });
+});
     </script>
 
-<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.0.2/dist/js/bootstrap.bundle.min.js" integrity="sha384-MrcW6ZMFYlzcLA8Nl+NtUVF0sA7MsXsP1UyJoMp4YLEuNSfAP+JcXn/tWtIaxVXM" crossorigin="anonymous"></script>
-<script src="https://code.jquery.com/jquery-3.7.0.min.js"></script>
-<script src="//cdn.datatables.net/1.13.4/js/jquery.dataTables.min.js"></script>
-<script type="text/javascript">
-    $(document).ready(function() {
-        $('#tabledata').DataTable({
-            "language": {
-                "sLengthMenu": "แสดง _MENU_ ข้อมูล",
-                "sZeroRecords": "ไม่พบข้อมูล",
-                "sInfo": "แสดง _START_ ถึง _END_ ของ _TOTAL_ ข้อมูล",
-                "sInfoEmpty": "แสดง 0 ถึง 0 ของ 0 ข้อมูล",
-                "sInfoFiltered": "(จากข้อมูลทั้งหมด _MAX_ ข้อมูล)",
-                "sSearch": "ค้นหา :",
-                "oPaginate": {
-                    "sFirst": "หน้าแรก",
-                    "sPrevious": "ก่อนหน้า",
-                    "sNext": "ถัดไป",
-                    "sLast": "หน้าสุดท้าย"
-                }
-            },
-            "aaSorting": [[0, 'desc']]  // เรียงลำดับจากคอลัมน์แรก
-        });
-    });
-</script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/js/bootstrap.bundle.min.js"></script>
 </body>
-</html>
+</html> 
