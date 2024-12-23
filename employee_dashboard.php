@@ -71,46 +71,32 @@ $stmt->close();
         <h1>Dashboard - ยอดขายของคุณ</h1>
 
         <?php if (count($sales_data) > 0): ?>
+            <div class="row mb-3">
+                <!-- ฟอร์มเลือกปี -->
+                <div class="col-md-12 mb-4">
+                    <label class="form-label">เลือกปี:</label>
+                    <div class="d-flex flex-wrap">
+                        <?php
+                        // กำหนดรายการปีที่มีข้อมูล
+                        $unique_years = array_unique(array_column($sales_data, 'year')); 
+                        foreach ($unique_years as $year): ?>
+                            <div class="form-check form-check-inline me-3">
+                                <input class="form-check-input" type="checkbox" name="years[]" value="<?= $year ?>" checked>
+                                <label class="form-check-label"><?= $year ?></label>
+                            </div>
+                        <?php endforeach; ?>
+                    </div>
+                </div>
+            </div>
+
             <div class="row">
                 <!-- กราฟยอดขาย -->
-                <div class="col-md-6 chart-container">
+                <div class="col-md-6 mb-4 chart-container">
                     <canvas id="salesChart" width="400" height="200"></canvas>
-                    <script>
-                        // กราฟยอดขาย
-                        var ctx = document.getElementById('salesChart').getContext('2d');
-                        var salesChart = new Chart(ctx, {
-                            type: 'line', // กราฟเป็นแบบเส้น
-                            data: {
-                                labels: <?= json_encode($months) ?>, // เดือนที่แปลงจากไตรมาส
-                                datasets: [{
-                                    label: 'ยอดขายรวม (บาท)',
-                                    data: <?= json_encode($sales) ?>, // ข้อมูลยอดขาย
-                                    borderColor: 'rgba(75, 192, 192, 1)',
-                                    backgroundColor: 'rgba(75, 192, 192, 0.2)',
-                                    borderWidth: 2
-                                }]
-                            },
-                            options: {
-                                responsive: true,
-                                plugins: {
-                                    legend: {
-                                        position: 'top',
-                                    },
-                                    tooltip: {
-                                        callbacks: {
-                                            label: function(tooltipItem) {
-                                                return 'ยอดขาย: ' + tooltipItem.raw.toLocaleString() + ' บาท';
-                                            }
-                                        }
-                                    }
-                                }
-                            }
-                        });
-                    </script>
                 </div>
 
                 <!-- ตารางยอดขาย -->
-                <div class="col-md-6 table-container">
+                <div class="col-md-6 mb-4 table-container">
                     <table class="table table-bordered">
                         <thead>
                             <tr>
@@ -134,6 +120,102 @@ $stmt->close();
         <?php endif; ?>
     </div>
 
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="js/bootstrap.bundle.min.js"></script>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            var ctx = document.getElementById('salesChart').getContext('2d');
+
+            // ส่ง quarter_to_month จาก PHP ไปยัง JavaScript
+            var quarterToMonth = <?= json_encode($quarter_to_month) ?>;
+
+            // เตรียมข้อมูลสำหรับกราฟ
+            var salesData = {
+                labels: <?= json_encode($months) ?>, // เดือนที่แปลงจากไตรมาส
+                datasets: [] // จะมีข้อมูลที่อัปเดตตามการเลือกปี
+            };
+
+            var salesDataFromPHP = <?= json_encode($sales_data) ?>; // ข้อมูลยอดขายจาก PHP
+
+            function updateChart() {
+                var selectedYears = Array.from(document.querySelectorAll('input[name="years[]"]:checked')).map(el => el.value);
+                
+                var datasets = [];
+
+                selectedYears.forEach(function(year) {
+                    var dataset = {
+                        label: 'ยอดขายปี ' + year,
+                        data: Array(salesData.labels.length).fill(null), // กำหนดให้ทุกเดือนมีค่า null เริ่มต้น
+                        borderColor: 'rgba(75, 192, 192, 1)',
+                        backgroundColor: 'rgba(75, 192, 192, 0.2)',
+                        borderWidth: 2,
+                        lineTension: 0, // ทำให้เส้นตรง
+                        fill: false // ไม่ให้กราฟเป็นพื้นที่
+                    };
+
+                    // ค้นหาข้อมูลยอดขายสำหรับปีนี้
+                    salesDataFromPHP.forEach(function(item) {
+                        if (item.year == year) {
+                            // แปลงไตรมาสเป็นเดือน
+                            var month = quarterToMonth[item.quarter];  // ใช้ quarterToMonth ที่ได้รับจาก PHP
+                            var index = salesData.labels.indexOf(month + " " + item.year);
+                            if (index !== -1) {
+                                dataset.data[index] = item.total_sales;
+                            }
+                        }
+                    });
+
+                    datasets.push(dataset);
+                });
+
+                // อัปเดตข้อมูลในกราฟ
+                salesData.datasets = datasets;
+                salesChart.update();
+            }
+
+            // สร้างกราฟ
+            var salesChart = new Chart(ctx, {
+                type: 'line', // กราฟเป็นเส้น
+                data: salesData,
+                options: {
+                    responsive: true,
+                    plugins: {
+                        legend: {
+                            position: 'top',
+                        },
+                        tooltip: {
+                            callbacks: {
+                                label: function(tooltipItem) {
+                                    return 'ยอดขาย: ' + tooltipItem.raw ? tooltipItem.raw.toLocaleString() + ' บาท' : 'ไม่มีข้อมูล';
+                                }
+                            }
+                        }
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            ticks: {
+                                callback: function(value) {
+                                    if (value === null) {
+                                        return 'ไม่มีข้อมูล';
+                                    }
+                                    return value.toLocaleString();
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+
+            // ฟังการเปลี่ยนแปลงของ checkbox ปีที่เลือก
+            document.querySelectorAll('input[name="years[]"]').forEach(function(checkbox) {
+                checkbox.addEventListener('change', updateChart);
+            });
+
+            // เรียกฟังก์ชันเพื่ออัปเดตกกราฟครั้งแรกเมื่อโหลด
+            updateChart();
+        });
+    </script>
 </body>
 </html>
