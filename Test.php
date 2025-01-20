@@ -28,6 +28,40 @@ if ($result->num_rows > 0) {
     echo "0 results";
 }
 
+// ดึงข้อมูลยอดขายของพนักงานตามสินค้าและจัดกลุ่มตามช่วงเวลา
+$sql = "SELECT u.username, s.product, s.year, s.month, s.quarter, SUM(s.amount) AS total_amount
+        FROM sales s
+        JOIN users u ON s.user_id = u.id
+        GROUP BY u.username, s.product, s.year, s.month, s.quarter
+        ORDER BY u.username, s.product, s.year, s.month";
+$result = $conn->query($sql);
+
+// สร้าง array สำหรับเก็บข้อมูลยอดขายของพนักงานตามสินค้า
+$employee_product_sales = [];
+
+if ($result->num_rows > 0) {
+    while($row = $result->fetch_assoc()) {
+        $username = $row['username'];
+        $product = $row['product'];
+        $year = $row['year'];
+        $month = $row['month'];
+        $quarter = $row['quarter'];
+
+        // จัดเก็บข้อมูลตามโครงสร้าง
+        $employee_product_sales[$username][$product]['monthly'][$year][$month] = $row['total_amount'];
+        $employee_product_sales[$username][$product]['quarterly'][$year][$quarter] = 
+            isset($employee_product_sales[$username][$product]['quarterly'][$year][$quarter])
+                ? $employee_product_sales[$username][$product]['quarterly'][$year][$quarter] + $row['total_amount']
+                : $row['total_amount'];
+        $employee_product_sales[$username][$product]['yearly'][$year] = 
+            isset($employee_product_sales[$username][$product]['yearly'][$year])
+                ? $employee_product_sales[$username][$product]['yearly'][$year] + $row['total_amount']
+                : $row['total_amount'];
+    }
+} else {
+    echo "0 results";
+}
+
 $conn->close();
 
 // แปลงข้อมูลให้เป็น JSON เพื่อใช้งานใน JavaScript
@@ -36,6 +70,10 @@ echo "var monthlyData = " . json_encode($monthly_data) . ";";
 echo "var quarterlyData = " . json_encode($quarterly_data) . ";";
 echo "var yearlyData = " . json_encode($yearly_data) . ";";
 echo "var productData = " . json_encode($product_data) . ";"; // ส่งข้อมูลสินค้า
+echo "</script>";
+
+echo "<script>";
+echo "var employeeProductSales = " . json_encode($employee_product_sales) . ";";
 echo "</script>";
 ?>
 
@@ -93,6 +131,28 @@ echo "</script>";
                         <option value="yearly">รายปี</option>
                     </select>
                     <canvas id="productChart"></canvas> <!-- กราฟสินค้า -->
+                </div>
+            </div>
+        </div>
+    </div>
+
+
+    <!-- กราฟพนักงาน -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card shadow-sm">
+                <div class="card-body">
+                    <!-- ตัวเลือกสำหรับช่วงเวลา -->
+                    <div class="form-group mb-4">
+                        <label for="timePeriodSelect">เลือกช่วงเวลา:</label>
+                        <select id="timePeriodSelect" class="form-select">
+                            <option value="monthly">รายเดือน</option>
+                            <option value="quarterly">รายไตรมาส</option>
+                            <option value="yearly">รายปี</option>
+                        </select>
+                    </div>
+                    <!-- แสดงกราฟ -->
+                    <canvas id="employeeProductChart"></canvas>
                 </div>
             </div>
         </div>
@@ -224,6 +284,94 @@ echo "</script>";
         });
         productChart.update();
     });
+
+    //กราฟพนักงาน
+        var ctx = document.getElementById('employeeProductChart').getContext('2d');
+
+    // ฟังก์ชันสำหรับดึงข้อมูลและสร้างกราฟ
+    function updateEmployeeProductChart(timePeriod) {
+        var labels = [];
+        var datasets = [];
+
+        // สร้างข้อมูลสำหรับแต่ละพนักงาน
+        Object.keys(employeeProductSales).forEach(function(username) {
+            Object.keys(employeeProductSales[username]).forEach(function(product) {
+                var data = [];
+                if (timePeriod === 'monthly') {
+                    labels = ['มกราคม', 'กุมภาพันธ์', 'มีนาคม', 'เมษายน', 'พฤษภาคม', 'มิถุนายน', 
+                              'กรกฎาคม', 'สิงหาคม', 'กันยายน', 'ตุลาคม', 'พฤศจิกายน', 'ธันวาคม'];
+                    Object.keys(employeeProductSales[username][product]['monthly']).forEach(function(year) {
+                        labels.forEach(function(month, index) {
+                            var monthIndex = index + 1; // เดือนเริ่มจาก 1
+                            data.push(employeeProductSales[username][product]['monthly'][year][monthIndex] || 0);
+                        });
+                    });
+                } else if (timePeriod === 'quarterly') {
+                    labels = ['ไตรมาส 1', 'ไตรมาส 2', 'ไตรมาส 3', 'ไตรมาส 4'];
+                    Object.keys(employeeProductSales[username][product]['quarterly']).forEach(function(year) {
+                        labels.forEach(function(quarter, index) {
+                            var quarterIndex = index + 1; // ไตรมาสเริ่มจาก 1
+                            data.push(employeeProductSales[username][product]['quarterly'][year][quarterIndex] || 0);
+                        });
+                    });
+                } else if (timePeriod === 'yearly') {
+                    labels = Object.keys(employeeProductSales[username][product]['yearly']);
+                    data = labels.map(function(year) {
+                        return employeeProductSales[username][product]['yearly'][year] || 0;
+                    });
+                }
+
+                // เพิ่มข้อมูลเข้า datasets
+                datasets.push({
+                    label: username + ' - ' + product,
+                    data: data,
+                    backgroundColor: getRandomColor(),
+                    borderColor: getRandomColor(),
+                    borderWidth: 1
+                });
+            });
+        });
+
+        // อัปเดตกราฟ
+        employeeProductChart.data.labels = labels;
+        employeeProductChart.data.datasets = datasets;
+        employeeProductChart.update();
+    }
+
+    // ฟังก์ชันสร้างสีสุ่ม
+    function getRandomColor() {
+        var letters = '0123456789ABCDEF';
+        var color = '#';
+        for (var i = 0; i < 6; i++) {
+            color += letters[Math.floor(Math.random() * 16)];
+        }
+        return color;
+    }
+
+    // สร้างกราฟ
+    var employeeProductChart = new Chart(ctx, {
+        type: 'bar',
+        data: {
+            labels: [],
+            datasets: []
+        },
+        options: {
+            responsive: true,
+            scales: {
+                y: {
+                    beginAtZero: true
+                }
+            }
+        }
+    });
+
+    // อัปเดตกราฟเมื่อเลือกช่วงเวลา
+    document.getElementById('timePeriodSelect').addEventListener('change', function() {
+        updateEmployeeProductChart(this.value);
+    });
+
+    // เริ่มต้นด้วยข้อมูลรายเดือน
+    updateEmployeeProductChart('monthly');
 </script>
 
 <!-- เชื่อมต่อกับ Bootstrap JS -->
