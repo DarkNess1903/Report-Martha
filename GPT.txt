@@ -93,153 +93,119 @@ while ($row = $result->fetch_assoc()) {
     </style>
 </head>
 
-<body>
-    <?php include 'topnavbar.php'; ?>
+<body class="container mt-4">
+    <h2 class="text-center">Sales Report</h2>
     
-    <h2 class="text-center mb-4">📊 รายงานยอดขาย</h2>
-
-<div class="card p-3 mb-4 text-center">
-    <label for="timePeriodSelect" class="form-label fw-bold">🕒 เลือกช่วงเวลา:</label>
-    <select id="timePeriodSelect" class="form-select w-25 mx-auto d-flex justify-content-center" onchange="updateTimePeriod()">
+    <label for="timePeriodSelect" class="form-label">เลือกช่วงเวลา:</label>
+    <select id="timePeriodSelect" class="form-select w-25" onchange="updateTimePeriod()">
         <option value="monthly" <?= ($timePeriod == 'monthly') ? 'selected' : '' ?>>รายเดือน</option>
         <option value="quarterly" <?= ($timePeriod == 'quarterly') ? 'selected' : '' ?>>รายไตรมาส</option>
         <option value="yearly" <?= ($timePeriod == 'yearly') ? 'selected' : '' ?>>รายปี</option>
     </select>
-</div>
 
-    <!-- กราฟ -->
-    <div class="row">
-        <div class="col-md-6">
-            <div class="card shadow-sm p-3">
-                <h5 class="text-center">📊 ยอดขายสินค้า</h5>
-                <canvas id="salesChart"></canvas>
-            </div>
-        </div>
-        <div class="col-md-6">
-            <div class="card shadow-sm p-3">
-                <h5 class="text-center">📈 ยอดขายรวมทุกช่วงเวลา</h5>
-                <canvas id="totalSalesChart"></canvas>
-            </div>
-        </div>
+    <div id="chart-container" class="mt-4">
+        <canvas id="salesChart"></canvas>
+    </div>
+    <div id="chart-container" class="mt-4">
+        <canvas id="totalSalesChart"></canvas>
+    </div>
+    <div id="chart-container" class="mt-4">
+        <canvas id="employeeSalesChart"></canvas>
     </div>
 
-    <div class="row mt-4">
-    <!-- กราฟ 📉 ยอดขายพนักงาน -->
-    <div class="col-md-6">
-        <div class="card shadow-sm p-3">
-            <h5 class="text-center">📉 ยอดขายพนักงาน</h5>
-            <canvas id="employeeSalesChart"></canvas>
-        </div>
-    </div>
+    
+    <table class="table table-bordered mt-4">
+    <thead class="table-dark">
+        <tr>
+            <th>ปี</th>
+            <?php if ($timePeriod == 'monthly') echo '<th>เดือน</th>'; ?>
+            <?php if ($timePeriod == 'quarterly') echo '<th>ไตรมาส</th>'; ?>
+            <th>สินค้า</th>
+            <th>ยอดขาย</th>
+            <th>จัดการ</th>
+        </tr>
+    </thead>
+    <tbody>
+        <?php foreach ($sales_data as $row) { ?>
+            <tr>
+                <td><?= $row['year'] ?></td>
+                <?php if ($timePeriod == 'monthly') echo '<td>' . ($row['month'] ?? '-') . '</td>'; ?>
+                <?php if ($timePeriod == 'quarterly') echo '<td>' . ($row['quarter'] ?? '-') . '</td>'; ?>
+                <td><?= $row['product'] ?></td>
+                <td><?= number_format($row['amount'], 2) ?></td>
+                <td>
+                    <!-- ปุ่มแก้ไข -->
+                    <button type="button" class="btn btn-warning btn-sm" data-bs-toggle="modal" data-bs-target="#editModal<?= $row['id'] ?>">
+                        แก้ไข
+                    </button>
 
-    <!-- ตาราง 📋 ข้อมูลยอดขาย -->
-    <div class="col-md-6">
-        <div class="card shadow-sm">
-            <div class="card-header d-flex justify-content-between align-items-center">
-                <h5 class="mb-0">📋 ข้อมูลยอดขาย</h5>
-                <button type="button" class="btn btn-success btn-sm" data-bs-toggle="modal" data-bs-target="#addSaleModal">
-                    ➕ เพิ่มข้อมูล
-                </button>
-            </div>
-            <div class="card-body">
-                <table class="table table-bordered table-striped table-hover text-center">
-                    <thead class="table-dark">
-                        <tr>
-                            <th>ปี</th>
-                            <?php if ($timePeriod == 'monthly') echo '<th>เดือน</th>'; ?>
-                            <?php if ($timePeriod == 'quarterly') echo '<th>ไตรมาส</th>'; ?>
-                            <th>สินค้า</th>
-                            <th>ยอดขาย</th>
-                            <th>จัดการ</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        <?php foreach ($sales_data as $row) { ?>
-                            <tr>
-                                <td><?= $row['year'] ?></td>
-                                <?php if ($timePeriod == 'monthly') echo '<td>' . ($row['month'] ?? '-') . '</td>'; ?>
-                                <?php if ($timePeriod == 'quarterly') echo '<td>' . ($row['quarter'] ?? '-') . '</td>'; ?>
-                                <td><?= $row['product'] ?></td>
-                                <td><?= number_format($row['amount'], 2) ?></td>
-                                <td>
-                                    <!-- ปุ่มแก้ไข -->
-                                    <button type="button" class="btn btn-warning btn-sm" data-bs-toggle="modal" data-bs-target="#editModal<?= $row['id'] ?>">
-                                        ✏️
-                                    </button>
+                    <!-- ปุ่มลบ -->
+                    <form method="post" class="d-inline" onsubmit="return confirmAction('คุณแน่ใจหรือไม่ที่จะลบรายการนี้?')">
+                        <input type="hidden" name="sale_id" value="<?= $row['id'] ?>">
+                        <button type="submit" name="delete_sale" class="btn btn-danger btn-sm">ลบ</button>
+                    </form>
+                </td>
+            </tr>
 
-                                    <!-- ปุ่มลบ -->
-                                    <form method="post" class="d-inline" onsubmit="return confirmAction('คุณแน่ใจหรือไม่ที่จะลบรายการนี้?')">
-                                        <input type="hidden" name="sale_id" value="<?= $row['id'] ?>">
-                                        <button type="submit" name="delete_sale" class="btn btn-danger btn-sm">🗑️</button>
-                                    </form>
-                                </td>
-                            </tr>
+            <!-- Modal แก้ไข -->
+            <div class="modal fade" id="editModal<?= $row['id'] ?>" tabindex="-1" aria-labelledby="editModalLabel<?= $row['id'] ?>" aria-hidden="true">
+                <div class="modal-dialog">
+                    <div class="modal-content">
+                        <div class="modal-header">
+                            <h5 class="modal-title" id="editModalLabel<?= $row['id'] ?>">แก้ไขยอดขาย</h5>
+                            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                        </div>
+                        <form method="post">
+                            <div class="modal-body">
+                                <input type="hidden" name="sale_id" value="<?= $row['id'] ?>">
+                                
+                                <div class="mb-3">
+                                    <label class="form-label">ปี</label>
+                                    <input type="number" class="form-control" name="year" value="<?= $row['year'] ?>" required>
+                                </div>
 
-                            <!-- Modal แก้ไข -->
-                            <div class="modal fade" id="editModal<?= $row['id'] ?>" tabindex="-1" aria-labelledby="editModalLabel<?= $row['id'] ?>" aria-hidden="true">
-                                <div class="modal-dialog">
-                                    <div class="modal-content">
-                                        <div class="modal-header">
-                                            <h5 class="modal-title">📝 แก้ไขยอดขาย</h5>
-                                            <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-                                        </div>
-                                        <form method="post">
-                                            <div class="modal-body">
-                                                <input type="hidden" name="sale_id" value="<?= $row['id'] ?>">
-
-                                                <div class="mb-3">
-                                                    <label class="form-label">ปี</label>
-                                                    <input type="number" class="form-control" name="year" value="<?= $row['year'] ?>" required>
-                                                </div>
-
-                                                <?php if ($timePeriod == 'monthly') { ?>
-                                                    <div class="mb-3">
-                                                        <label class="form-label">เดือน</label>
-                                                        <input type="number" class="form-control" name="month" value="<?= $row['month'] ?? '' ?>" min="1" max="12">
-                                                    </div>
-                                                <?php } ?>
-
-                                                <?php if ($timePeriod == 'quarterly') { ?>
-                                                    <div class="mb-3">
-                                                        <label class="form-label">ไตรมาส</label>
-                                                        <input type="number" class="form-control" name="quarter" value="<?= $row['quarter'] ?? '' ?>" min="1" max="4">
-                                                    </div>
-                                                <?php } ?>
-
-                                                <div class="mb-3">
-                                                    <label class="form-label">สินค้า</label>
-                                                    <input type="text" class="form-control" name="product" value="<?= $row['product'] ?>" required>
-                                                </div>
-
-                                                <div class="mb-3">
-                                                    <label class="form-label">ยอดขาย</label>
-                                                    <input type="number" class="form-control" name="amount" value="<?= $row['amount'] ?>" required>
-                                                </div>
-                                            </div>
-                                            <div class="modal-footer">
-                                                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">❌ ยกเลิก</button>
-                                                <button type="submit" name="edit_sale" class="btn btn-primary">💾 บันทึก</button>
-                                            </div>
-                                        </form>
+                                <?php if ($timePeriod == 'monthly') { ?>
+                                    <div class="mb-3">
+                                        <label class="form-label">เดือน</label>
+                                        <input type="number" class="form-control" name="month" value="<?= $row['month'] ?? '' ?>" min="1" max="12">
                                     </div>
+                                <?php } ?>
+
+                                <?php if ($timePeriod == 'quarterly') { ?>
+                                    <div class="mb-3">
+                                        <label class="form-label">ไตรมาส</label>
+                                        <input type="number" class="form-control" name="quarter" value="<?= $row['quarter'] ?? '' ?>" min="1" max="4">
+                                    </div>
+                                <?php } ?>
+
+                                <div class="mb-3">
+                                    <label class="form-label">สินค้า</label>
+                                    <input type="text" class="form-control" name="product" value="<?= $row['product'] ?>" required>
+                                </div>
+
+                                <div class="mb-3">
+                                    <label class="form-label">ยอดขาย</label>
+                                    <input type="number" class="form-control" name="amount" value="<?= $row['amount'] ?>" required>
                                 </div>
                             </div>
-
-                        <?php } ?>
-                    </tbody>
-                </table>
+                            <div class="modal-footer">
+                                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">ยกเลิก</button>
+                                <button type="submit" name="edit_sale" class="btn btn-primary">บันทึกการเปลี่ยนแปลง</button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
             </div>
-        </div>
-    </div>
-</div>
+        <?php } ?>
+    </tbody>
+</table>
+</tbody>
+</table>
 
-    <script>
-        function updateTimePeriod() {
-            let timePeriod = document.getElementById("timePeriodSelect").value;
-            window.location.href = "sales_details.php?user_id=<?= $user_id ?>&timePeriod=" + timePeriod;
-        }
-    </script>
-</body>
+<!-- ปุ่มเพิ่มข้อมูลยอดขาย -->
+<button type="button" class="btn btn-success" data-bs-toggle="modal" data-bs-target="#addSaleModal">
+    + เพิ่มข้อมูลยอดขาย
+</button>
 
 <!-- Modal เพิ่มข้อมูลยอดขาย -->
 <div class="modal fade" id="addSaleModal" tabindex="-1" aria-labelledby="addSaleModalLabel" aria-hidden="true">
