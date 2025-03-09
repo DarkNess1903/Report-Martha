@@ -87,6 +87,16 @@ $stmt->close();
                         <?php endforeach; ?>
                     </div>
                 </div>
+
+                <!-- ตัวเลือกในการเลือกช่วงเวลาที่ต้องการแสดง -->
+                <div class="col-md-12 mb-4">
+                    <label for="timePeriodSelect">เลือกช่วงเวลา:</label>
+                    <select id="timePeriodSelect" class="form-select">
+                        <option value="monthly">รายเดือน</option>
+                        <option value="quarterly">รายไตรมาส</option>
+                        <option value="yearly">รายปี</option>
+                    </select>
+                </div>
             </div>
 
             <div class="row">
@@ -100,7 +110,7 @@ $stmt->close();
                     <table class="table table-bordered">
                         <thead>
                             <tr>
-                                <th>เดือน</th>
+                                <th>เดือน/ไตรมาส</th>
                                 <th>ยอดขายรวม (บาท)</th>
                             </tr>
                         </thead>
@@ -212,6 +222,9 @@ $stmt->close();
             document.querySelectorAll('input[name="years[]"]').forEach(function(checkbox) {
                 checkbox.addEventListener('change', updateChart);
             });
+
+            // ฟังการเปลี่ยนแปลงของช่วงเวลา
+            document.getElementById('timePeriodSelect').addEventListener('change', updateChart);
 
             // เรียกฟังก์ชันเพื่ออัปเดตกกราฟครั้งแรกเมื่อโหลด
             updateChart();

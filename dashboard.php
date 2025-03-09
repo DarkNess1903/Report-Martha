@@ -146,7 +146,7 @@ echo "</script>";
                         <option value="monthly">รายเดือน</option>
                         <option value="quarterly">รายไตรมาส</option>
                         <option value="yearly">รายปี</option>
-                    </select>
+                    </select>   
                 <!-- แสดงกราฟยอดขาย -->
                 <canvas id="timePeriodChart"></canvas>
             </div>

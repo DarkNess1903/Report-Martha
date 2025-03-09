@@ -97,15 +97,16 @@ while ($row = $result->fetch_assoc()) {
     <?php include 'topnavbar.php'; ?>
     
     <h2 class="text-center mb-4">📊 รายงานยอดขาย</h2>
-
-<div class="card p-3 mb-4 text-center">
-    <label for="timePeriodSelect" class="form-label fw-bold">🕒 เลือกช่วงเวลา:</label>
-    <select id="timePeriodSelect" class="form-select w-25 mx-auto d-flex justify-content-center" onchange="updateTimePeriod()">
-        <option value="monthly" <?= ($timePeriod == 'monthly') ? 'selected' : '' ?>>รายเดือน</option>
-        <option value="quarterly" <?= ($timePeriod == 'quarterly') ? 'selected' : '' ?>>รายไตรมาส</option>
-        <option value="yearly" <?= ($timePeriod == 'yearly') ? 'selected' : '' ?>>รายปี</option>
-    </select>
-</div>
+    <div class="card p-3 mb-4 text-center">
+        <div class="d-flex justify-content-center align-items-center">
+            <label for="timePeriodSelect" class="form-label fw-bold me-3">🕒 เลือกช่วงเวลา:</label>
+            <select id="timePeriodSelect" class="form-select w-25" onchange="updateTimePeriod()">
+                <option value="monthly" <?= ($timePeriod == 'monthly') ? 'selected' : '' ?>>รายเดือน</option>
+                <option value="quarterly" <?= ($timePeriod == 'quarterly') ? 'selected' : '' ?>>รายไตรมาส</option>
+                <option value="yearly" <?= ($timePeriod == 'yearly') ? 'selected' : '' ?>>รายปี</option>
+            </select>
+        </div>
+    </div>
 
     <!-- กราฟ -->
     <div class="row">
@@ -292,7 +293,7 @@ while ($row = $result->fetch_assoc()) {
 </div>
 
     
-    <script>
+<script>
     function updateTimePeriod() {
         let timePeriod = document.getElementById("timePeriodSelect").value;
         window.location.href = "sales_details.php?user_id=<?= $user_id ?>&timePeriod=" + timePeriod;
@@ -300,132 +301,133 @@ while ($row = $result->fetch_assoc()) {
 
     let salesData = <?= json_encode($sales_data) ?>;
 
-    function processSalesData(salesData, timePeriod) {
-        let salesSummary = {};
-        let productSales = {};
+function processSalesData(salesData, timePeriod) {
+    let salesSummary = {};
+    let productSales = {};
 
-        salesData.forEach(sale => {
-            let key;
-            if (timePeriod === 'monthly') {
-                key = `${sale.year}-${sale.month}`;
-            } else if (timePeriod === 'quarterly') {
-                key = `${sale.year} Q${sale.quarter}`;
-            } else {
-                key = sale.year;
-            }
+    salesData.forEach(sale => {
+        let key;
+        if (timePeriod === 'monthly') {
+            key = `${sale.year}-${sale.month}`;
+        } else if (timePeriod === 'quarterly') {
+            key = `${sale.year} Q${sale.quarter}`;
+        } else {
+            key = sale.year;
+        }
 
-            // ยอดขายรวม
-            if (!salesSummary[key]) {
-                salesSummary[key] = 0;
-            }
-            salesSummary[key] += parseFloat(sale.amount);
+        // ยอดขายรวม
+        if (!salesSummary[key]) {
+            salesSummary[key] = 0;
+        }
+        salesSummary[key] += parseFloat(sale.amount);
 
-            // ยอดขายแยกตามสินค้า
-            if (!productSales[sale.product]) {
-                productSales[sale.product] = {};
-            }
-            if (!productSales[sale.product][key]) {
-                productSales[sale.product][key] = 0;
-            }
-            productSales[sale.product][key] += parseFloat(sale.amount);
-        });
+        // ยอดขายแยกตามสินค้า
+        if (!productSales[sale.product]) {
+            productSales[sale.product] = {};
+        }
+        if (!productSales[sale.product][key]) {
+            productSales[sale.product][key] = 0;
+        }
+        productSales[sale.product][key] += parseFloat(sale.amount);
+    });
 
-        return {
-            labels: Object.keys(salesSummary),
-            amounts: Object.values(salesSummary),
-            productSales: productSales
-        };
+    return {
+        labels: Object.keys(salesSummary),
+        amounts: Object.values(salesSummary),
+        productSales: productSales
+    };
+}
+
+// Process data based on the selected year
+let timePeriod = "<?= $timePeriod ?>";
+let processedData = processSalesData(salesData, timePeriod);
+
+// 🔵 กราฟแท่ง: ยอดขายสินค้าแต่ละตัว
+new Chart(document.getElementById("salesChart"), {
+    type: "bar",
+    data: {
+        labels: Object.keys(processedData.productSales),
+        datasets: [{
+            label: "ยอดขายสินค้า",
+            data: Object.values(processedData.productSales).map(obj => Object.values(obj).reduce((a, b) => a + b, 0)),
+            backgroundColor: "rgba(54, 162, 235, 0.6)",
+            borderColor: "rgba(54, 162, 235, 1)",
+            borderWidth: 1
+        }]
+    },
+    options: {
+        responsive: true,
+        maintainAspectRatio: true
     }
+});
 
-    let timePeriod = "<?= $timePeriod ?>";
-    let processedData = processSalesData(salesData, timePeriod);
-
-    // 🔵 กราฟแท่ง: ยอดขายสินค้าแต่ละตัว
-    new Chart(document.getElementById("salesChart"), {
-        type: "bar",
-        data: {
-            labels: Object.keys(processedData.productSales),
-            datasets: [{
-                label: "ยอดขายสินค้า",
-                data: Object.values(processedData.productSales).map(obj => Object.values(obj).reduce((a, b) => a + b, 0)),
-                backgroundColor: "rgba(54, 162, 235, 0.6)",
-                borderColor: "rgba(54, 162, 235, 1)",
-                borderWidth: 1
-            }]
-        },
-        options: {
-            responsive: true,
-            maintainAspectRatio: true
-        }
-    });
-
-    // 🔴 กราฟเส้น: ยอดขายรวมของพนักงาน
-    new Chart(document.getElementById("employeeSalesChart"), {
-        type: "line",
-        data: {
-            labels: processedData.labels,
-            datasets: [{
-                label: "ยอดขายพนักงาน",
-                data: processedData.amounts,
-                borderColor: "rgba(75, 192, 192, 1)",
-                backgroundColor: "rgba(75, 192, 192, 0.2)",
-                borderWidth: 2,
-                fill: true
-            }]
-        },
-        options: {
-            responsive: true,
-            maintainAspectRatio: true,
-            scales: {
-                x: {
-                    title: {
-                        display: true,
-                        text: "ช่วงเวลา"
-                    }
-                },
-                y: {
-                    title: {
-                        display: true,
-                        text: "ยอดขาย (บาท)"
-                    }
+// 🔴 กราฟเส้น: ยอดขายรวมของพนักงาน
+new Chart(document.getElementById("employeeSalesChart"), {
+    type: "line",
+    data: {
+        labels: processedData.labels,
+        datasets: [{
+            label: "ยอดขายพนักงาน",
+            data: processedData.amounts,
+            borderColor: "rgba(75, 192, 192, 1)",
+            backgroundColor: "rgba(75, 192, 192, 0.2)",
+            borderWidth: 2,
+            fill: true
+        }]
+    },
+    options: {
+        responsive: true,
+        maintainAspectRatio: true,
+        scales: {
+            x: {
+                title: {
+                    display: true,
+                    text: "ช่วงเวลา"
+                }
+            },
+            y: {
+                title: {
+                    display: true,
+                    text: "ยอดขาย (บาท)"
                 }
             }
         }
-    });
+    }
+});
 
-    // 🟢 กราฟเส้น: ยอดขายรวมทุกช่วงเวลา
-    new Chart(document.getElementById("totalSalesChart"), {
-        type: "line",
-        data: {
-            labels: processedData.labels,
-            datasets: [{
-                label: "ยอดขายรวมทุกช่วงเวลา",
-                data: processedData.amounts,
-                borderColor: "rgba(255, 99, 132, 1)",
-                backgroundColor: "rgba(255, 99, 132, 0.2)",
-                borderWidth: 2,
-                fill: true
-            }]
-        },
-        options: {
-            responsive: true,
-            maintainAspectRatio: true,
-            scales: {
-                x: {
-                    title: {
-                        display: true,
-                        text: "ช่วงเวลา"
-                    }
-                },
-                y: {
-                    title: {
-                        display: true,
-                        text: "ยอดขาย (บาท)"
-                    }
+// 🟢 กราฟเส้น: ยอดขายรวมทุกช่วงเวลา
+new Chart(document.getElementById("totalSalesChart"), {
+    type: "line",
+    data: {
+        labels: processedData.labels,
+        datasets: [{
+            label: "ยอดขายรวมทุกช่วงเวลา",
+            data: processedData.amounts,
+            borderColor: "rgba(255, 99, 132, 1)",
+            backgroundColor: "rgba(255, 99, 132, 0.2)",
+            borderWidth: 2,
+            fill: true
+        }]
+    },
+    options: {
+        responsive: true,
+        maintainAspectRatio: true,
+        scales: {
+            x: {
+                title: {
+                    display: true,
+                    text: "ช่วงเวลา"
+                }
+            },
+            y: {
+                title: {
+                    display: true,
+                    text: "ยอดขาย (บาท)"
                 }
             }
         }
-    });
+    }
+});
 </script>
     
 </body>
