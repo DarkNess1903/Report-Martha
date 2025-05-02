@@ -2,169 +2,359 @@
 session_start();
 include 'db.php';
 
-// ตรวจสอบสิทธิ์ผู้บริหาร
-if (!isset($_SESSION['user_id']) || $_SESSION['role'] != 'admin') {
+if (!isset($_SESSION['user_id'])) {
     header('Location: login.php');
     exit();
 }
 
-$user_id = isset($_GET['user_id']) ? $_GET['user_id'] : 0;
-$timePeriod = isset($_GET['timePeriod']) ? $_GET['timePeriod'] : 'monthly';
+$current_year = date("Y");
 
-// จัดการข้อมูลยอดขาย (เพิ่ม, ลบ, แก้ไข)
-if ($_SERVER['REQUEST_METHOD'] == 'POST') {
-    if (isset($_POST['add_sale'])) {
-        $year = $_POST['year'];
-        $month = $_POST['month'] ?? null;
-        $quarter = $_POST['quarter'] ?? null;
-        $product = $_POST['product'];
-        $amount = $_POST['amount'];
-        
-        $sql = "INSERT INTO sales (user_id, year, month, quarter, product, amount) VALUES (?, ?, ?, ?, ?, ?)";
-        $stmt = $conn->prepare($sql);
-        $stmt->bind_param("iiissi", $user_id, $year, $month, $quarter, $product, $amount);
-        $stmt->execute();
-        $stmt->close();
-    } elseif (isset($_POST['edit_sale'])) {
-        $sale_id = $_POST['sale_id'];
-        $year = $_POST['year'];
-        $month = $_POST['month'] ?? null;
-        $quarter = $_POST['quarter'] ?? null;
-        $product = $_POST['product'];
-        $amount = $_POST['amount'];
-        
-        $sql = "UPDATE sales SET year=?, month=?, quarter=?, product=?, amount=? WHERE id=?";
-        $stmt = $conn->prepare($sql);
-        $stmt->bind_param("iissii", $year, $month, $quarter, $product, $amount, $sale_id);
-        $stmt->execute();
-        $stmt->close();
-    } elseif (isset($_POST['delete_sale'])) {
-        $sale_id = $_POST['sale_id'];
-        
-        $sql = "DELETE FROM sales WHERE id=?";
-        $stmt = $conn->prepare($sql);
-        $stmt->bind_param("i", $sale_id);
-        $stmt->execute();
-        $stmt->close();
+// ดึงข้อมูลยอดขายรวมรายเดือน, รายไตรมาส และสินค้า
+$sql = "SELECT month, quarter, product, SUM(amount) AS total_amount
+        FROM sales
+        WHERE year = $current_year
+        GROUP BY month, quarter, product
+        ORDER BY month";
+$result = $conn->query($sql);
+
+$monthly_data = [];
+$quarterly_data = [];
+$product_data = [];
+
+if ($result->num_rows > 0) {
+    while($row = $result->fetch_assoc()) {
+        $month = $row['month'];
+        $quarter = $row['quarter'];
+        $product = $row['product'];
+        $amount = $row['total_amount'];
+
+        $monthly_data[$month] = $amount;
+        $quarterly_data[$quarter][] = $amount;
+        $product_data[$product][$month] = $amount;
     }
-    header("Location: sales_details.php?user_id=$user_id&timePeriod=$timePeriod");
-    exit();
 }
 
-// ปรับ SQL Query ตามตัวเลือกช่วงเวลา
-if ($timePeriod == 'monthly') {
-    $sql = "SELECT id, year, month, product, amount FROM sales WHERE user_id = ? ORDER BY year ASC, month ASC";
-} elseif ($timePeriod == 'quarterly') {
-    $sql = "SELECT id, year, quarter, product, amount FROM sales WHERE user_id = ? ORDER BY year ASC, quarter ASC";
-} else {
-    $sql = "SELECT id, year, product, amount FROM sales WHERE user_id = ? ORDER BY year ASC";
+// ดึงข้อมูลยอดขายของพนักงานรายเดือนและรายไตรมาส
+$sql = "SELECT u.username, s.product, s.month, s.quarter, SUM(s.amount) AS total_amount
+        FROM sales s
+        JOIN users u ON s.user_id = u.id
+        WHERE s.year = $current_year
+        GROUP BY u.username, s.product, s.month, s.quarter
+        ORDER BY u.username, s.product, s.month";
+$result = $conn->query($sql);
+
+$employee_product_sales = [];
+
+if ($result->num_rows > 0) {
+    while($row = $result->fetch_assoc()) {
+        $username = $row['username'];
+        $product = $row['product'];
+        $month = $row['month'];
+        $quarter = $row['quarter'];
+        $amount = $row['total_amount'];
+
+        $employee_product_sales[$username][$product]['monthly'][$month] = $amount;
+
+        $employee_product_sales[$username][$product]['quarterly'][$quarter] = 
+            isset($employee_product_sales[$username][$product]['quarterly'][$quarter])
+                ? $employee_product_sales[$username][$product]['quarterly'][$quarter] + $amount
+                : $amount;
+    }
 }
 
-$stmt = $conn->prepare($sql);
-$stmt->bind_param("i", $user_id);
-$stmt->execute();
-$result = $stmt->get_result();
-$stmt->close();
+// ดึงข้อมูลสินค้าขายดี 5 อันดับ
+$sql_best_selling = "SELECT product, SUM(amount) AS total_sales 
+                     FROM sales 
+                     WHERE year = $current_year
+                     GROUP BY product 
+                     ORDER BY total_sales DESC 
+                     LIMIT 5";
+$result_best = $conn->query($sql_best_selling);
 
-$sales_data = [];
-while ($row = $result->fetch_assoc()) {
-    $sales_data[] = $row;
+$best_selling_products = [];
+while ($row = $result_best->fetch_assoc()) {
+    $best_selling_products[] = $row;
 }
+
+// ดึงข้อมูลสินค้าขายไม่ดี 5 อันดับ
+$sql_worst_selling = "SELECT product, SUM(amount) AS total_sales 
+                      FROM sales 
+                      WHERE year = $current_year
+                      GROUP BY product 
+                      ORDER BY total_sales ASC 
+                      LIMIT 5";
+$result_worst = $conn->query($sql_worst_selling);
+
+$worst_selling_products = [];
+while ($row = $result_worst->fetch_assoc()) {
+    $worst_selling_products[] = $row;
+}
+$best_selling_json = json_encode($best_selling_products);
+$worst_selling_json = json_encode($worst_selling_products);
+
+$conn->close();
+
+// ส่งข้อมูลเป็น JSON ไปยัง JavaScript
 ?>
+<script>
+    var monthlyData = <?php echo json_encode($monthly_data); ?>;
+    var quarterlyData = <?php echo json_encode($quarterly_data); ?>;
+    var productData = <?php echo json_encode($product_data); ?>;
+    var employeeProductSales = <?php echo json_encode($employee_product_sales); ?>;
+    var bestSelling = <?php echo json_encode($best_selling_products); ?>;
+    var worstSelling = <?php echo json_encode($worst_selling_products); ?>;
+</script>
 
 <!DOCTYPE html>
-<html>
+<html lang="th">
 <head>
-    <title>Sales Report</title>
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css">
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard</title>
+    <!-- เชื่อมต่อ Bootstrap 5 และ Chart.js -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/css/bootstrap.min.css" rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <script>
-        function confirmAction(message) {
-            return confirm(message);
-        }
-    </script>
-    <style>
-        #chart-container {
-            width: 100%;
-            max-width: 800px;
-            margin: auto;
-        }
-    </style>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
 </head>
-<body class="container mt-4">
-    <h2 class="text-center">Sales Report</h2>
-    
-    <label for="timePeriodSelect" class="form-label">เลือกช่วงเวลา:</label>
-    <select id="timePeriodSelect" class="form-select w-25" onchange="updateTimePeriod()">
-        <option value="monthly" <?= ($timePeriod == 'monthly') ? 'selected' : '' ?>>รายเดือน</option>
-        <option value="quarterly" <?= ($timePeriod == 'quarterly') ? 'selected' : '' ?>>รายไตรมาส</option>
-        <option value="yearly" <?= ($timePeriod == 'yearly') ? 'selected' : '' ?>>รายปี</option>
-    </select>
+<body>
+    <!-- Include Top Navbar -->
+    <?php include 'topnavbar.php'; ?>
 
-    <div id="chart-container" class="mt-4">
-        <canvas id="salesChart"></canvas>
+<div class="container mt-5">
+    <div class="row">
+        <div class="col-12 text-center">
+            <h2>กราฟข้อมูลทางการเงิน</h2>
+            <p>เลือกช่วงเวลาที่ต้องการแสดงข้อมูลยอดขาย</p>
+        </div>
     </div>
-    <div id="chart-container" class="mt-4">
-        <canvas id="totalSalesChart"></canvas>
+
+    <div class="row mb-4">
+    <!-- กราฟยอดขาย -->
+    <div class="col-md-6">
+        <div class="card shadow-sm">
+            <div class="card-body">
+                <!-- ตัวเลือกในการเลือกช่วงเวลาที่ต้องการแสดง -->
+                <label for="timePeriodSelect">เลือกช่วงเวลายอดขาย:</label>
+                <select id="timePeriodSelect" class="form-select">
+                    <option value="monthly">รายเดือน</option>
+                    <option value="quarterly">รายไตรมาส</option>
+                </select>     
+                <!-- แสดงกราฟยอดขาย -->
+                <canvas id="timePeriodChart"></canvas>
+            </div>
+        </div>
     </div>
-    
-    <table class="table table-bordered mt-4">
-        <thead class="table-dark">
-            <tr>
-                <th>ปี</th>
-                <?php if ($timePeriod == 'monthly') echo '<th>เดือน</th>'; ?>
-                <?php if ($timePeriod == 'quarterly') echo '<th>ไตรมาส</th>'; ?>
-                <th>สินค้า</th>
-                <th>ยอดขาย</th>
-                <th>จัดการ</th>
-            </tr>
-        </thead>
-        <tbody>
-            <?php foreach ($sales_data as $row) { ?>
-                <tr>
-                    <td><?= $row['year'] ?></td>
-                    <?php if ($timePeriod == 'monthly') echo '<td>' . $row['month'] . '</td>'; ?>
-                    <?php if ($timePeriod == 'quarterly') echo '<td>' . $row['quarter'] . '</td>'; ?>
-                    <td><?= $row['product'] ?></td>
-                    <td><?= number_format($row['amount'], 2) ?></td>
-                    <td>
-                        <form method="post" class="d-inline" onsubmit="return confirmAction('คุณแน่ใจหรือไม่ที่จะลบรายการนี้?')">
-                            <input type="hidden" name="sale_id" value="<?= $row['id'] ?>">
-                            <button type="submit" name="delete_sale" class="btn btn-danger">ลบ</button>
-                        </form>
-                    </td>
-                </tr>
-            <?php } ?>
-        </tbody>
-    </table>
-    
-    <script>
-        function updateTimePeriod() {
-            let timePeriod = document.getElementById("timePeriodSelect").value;
-            window.location.href = "sales_details.php?user_id=<?= $user_id ?>&timePeriod=" + timePeriod;
+
+    <!-- กราฟสินค้า -->
+    <div class="col-md-6">
+        <div class="card shadow-sm">
+            <div class="card-body">
+                <!-- ตัวเลือกช่วงเวลาในการแสดงกราฟสินค้า -->
+                <label for="productTimeSelect">เลือกช่วงเวลาสำหรับกราฟสินค้า:</label>
+                <select id="productTimeSelect" class="form-select">
+                    <option value="monthly">รายเดือน</option>
+                    <option value="quarterly">รายไตรมาส</option>
+                </select>
+                <canvas id="productChart"></canvas> <!-- กราฟสินค้า -->
+            </div>
+        </div>
+    </div>
+</div>
+
+    <!-- กราฟสินค้าขายดีและขายไม่ดี -->
+    <div class="row">
+        <div class="col-md-6">
+            <div class="card shadow-sm">
+                <div class="card-body">
+                    <h5 class="card-title">สินค้าขายดี 5 อันดับ</h5>
+                    <canvas id="bestSellingChart"></canvas>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-6">
+            <div class="card shadow-sm">
+                <div class="card-body">
+                    <h5 class="card-title">สินค้าขายไม่ดี 5 อันดับ</h5>
+                    <canvas id="worstSellingChart"></canvas>
+                </div>
+            </div>
+        </div>
+    </div>
+
+<script>
+    var ctx1 = document.getElementById('timePeriodChart').getContext('2d');
+    var ctx2 = document.getElementById('productChart').getContext('2d');
+
+    // กราฟยอดขายในรูปแบบเริ่มต้น (รายเดือน)
+    var timePeriodChart = new Chart(ctx1, {
+        type: 'line',
+        data: {
+            labels: ['มกราคม', 'กุมภาพันธ์', 'มีนาคม', 'เมษายน', 'พฤษภาคม', 'มิถุนายน', 'กรกฎาคม', 'สิงหาคม', 'กันยายน', 'ตุลาคม', 'พฤศจิกายน', 'ธันวาคม'],
+            datasets: [{
+                label: 'ข้อมูลรายเดือน',
+                data: [1,2,3,4,5,6,7,8,9,10,11,12].map(function(m) {
+                    return monthlyData[m] || 0;
+                }),
+                borderColor: 'rgba(75, 192, 192, 1)',
+                fill: false
+            }]
+        }
+    });
+    // ฟังก์ชันเพื่อสร้างสีจาก HSL
+    function generateHSLColor(index) {
+        var hue = (index * 360 / Object.keys(productData).length) % 360;  // คำนวณค่า Hue
+        return 'hsl(' + hue + ', 70%, 50%)';  // Saturation 70%, Lightness 50%
+    }
+
+    // กราฟสินค้าในรูปแบบเริ่มต้น (รายเดือน)
+    var productChart = new Chart(ctx2, {
+        type: 'line',
+        data: {
+            labels: ['มกราคม', 'กุมภาพันธ์', 'มีนาคม', 'เมษายน', 'พฤษภาคม', 'มิถุนายน', 'กรกฎาคม', 'สิงหาคม', 'กันยายน', 'ตุลาคม', 'พฤศจิกายน', 'ธันวาคม'],
+            datasets: Object.keys(productData).map(function(product, index) {
+                return {
+                    label: product,
+                    data: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12].map(function(m) {
+                        return productData[product][m] || 0;
+                    }),
+                    borderColor: generateHSLColor(index), // ใช้สีจากฟังก์ชัน HSL
+                    fill: false
+                };
+            })
+        }
+    });
+
+    // อัปเดตกราฟยอดขายตามช่วงเวลา
+    document.getElementById('timePeriodSelect').addEventListener('change', function() {
+        var selectedPeriod = this.value;
+        var newLabels = [];
+        var newData = [];
+        var labelPrefix = "";
+
+        if (selectedPeriod == "monthly") {
+            newLabels = ['มกราคม', 'กุมภาพันธ์', 'มีนาคม', 'เมษายน', 'พฤษภาคม', 'มิถุนายน', 'กรกฎาคม', 'สิงหาคม', 'กันยายน', 'ตุลาคม', 'พฤศจิกายน', 'ธันวาคม'];
+            newData = [1,2,3,4,5,6,7,8,9,10,11,12].map(function(m) {
+                return monthlyData[m] || 0;
+            });
+            labelPrefix = "ข้อมูลรายเดือน";
+        } else if (selectedPeriod == "quarterly") {
+            newLabels = ['ไตรมาส 1', 'ไตรมาส 2', 'ไตรมาส 3', 'ไตรมาส 4'];
+            newData = [1, 2, 3, 4].map(function(q) {
+                let sum = quarterlyData[q];
+                return Array.isArray(sum) ? sum.reduce((a, b) => a + b, 0) : 0;
+            });
+            labelPrefix = "ข้อมูลรายไตรมาส";
         }
 
-        let salesData = <?= json_encode($sales_data) ?>;
-        let labels = salesData.map(sale => sale.product);
-        let amounts = salesData.map(sale => sale.amount);
+        timePeriodChart.data.labels = newLabels;
+        timePeriodChart.data.datasets[0].label = labelPrefix;
+        timePeriodChart.data.datasets[0].data = newData;
+        timePeriodChart.update();
+    });
 
-        new Chart(document.getElementById("salesChart"), {
-            type: "bar",
-            data: {
-                labels: labels,
-                datasets: [{
-                    label: "ยอดขายสินค้า",
-                    data: amounts,
-                    backgroundColor: "rgba(54, 162, 235, 0.6)",
-                    borderColor: "rgba(54, 162, 235, 1)",
-                    borderWidth: 1
-                }]
-            },
-            options: {
-                responsive: true,
-                maintainAspectRatio: true
-            }
-        });
-    </script>
+    // อัปเดตกราฟสินค้า
+    document.getElementById('productTimeSelect').addEventListener('change', function() {
+        var selectedPeriod = this.value;
+        var newLabels = [];
+        var newDatasets = [];
+
+        if (selectedPeriod == "monthly") {
+            newLabels = ['มกราคม', 'กุมภาพันธ์', 'มีนาคม', 'เมษายน', 'พฤษภาคม', 'มิถุนายน', 'กรกฎาคม', 'สิงหาคม', 'กันยายน', 'ตุลาคม', 'พฤศจิกายน', 'ธันวาคม'];
+            newDatasets = Object.keys(productData).map(function(product) {
+                return {
+                    label: product,
+                    data: [1,2,3,4,5,6,7,8,9,10,11,12].map(function(m) {
+                        return productData[product][m] || 0;
+                    }),
+                    borderColor: 'rgba(75, 192, 192, 1)',
+                    fill: false
+                };
+            });
+        } else if (selectedPeriod == "quarterly") {
+            newLabels = ['ไตรมาส 1', 'ไตรมาส 2', 'ไตรมาส 3', 'ไตรมาส 4'];
+            newDatasets = Object.keys(productData).map(function(product) {
+                return {
+                    label: product,
+                    data: [1,2,3,4].map(function(q) {
+                        return productData[product][q] || 0;
+                    }),
+                    borderColor: 'rgba(75, 192, 192, 1)',
+                    fill: false
+                };
+            });
+        }
+
+        productChart.data.labels = newLabels;
+        productChart.data.datasets = newDatasets;
+        productChart.update();
+    });
+</script>
+
+
+<!-- เชื่อมต่อกับ Bootstrap JS -->
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/js/bootstrap.bundle.min.js"></script>
+
 </body>
 </html>
+
+
+<script>
+    var bestSellingProducts = <?php echo $best_selling_json; ?>;
+    var worstSellingProducts = <?php echo $worst_selling_json; ?>;
+</script>
+
+<script>
+// ฟังก์ชันสุ่มสี
+function generateRandomColor() {
+    var r = Math.floor(Math.random() * 256);
+    var g = Math.floor(Math.random() * 256);
+    var b = Math.floor(Math.random() * 256);
+    return 'rgba(' + r + ',' + g + ',' + b + ', 0.6)'; // สร้างสีแบบโปร่งใส
+}
+
+// สร้างสีให้กับสินค้าแต่ละชนิด (ใช้ชื่อสินค้าหรือรหัสสินค้าในการระบุ)
+function getColorForProduct(product) {
+    if (!getColorForProduct.colorMap) {
+        getColorForProduct.colorMap = {}; // เก็บสีของสินค้าแต่ละตัว
+    }
+
+    if (!getColorForProduct.colorMap[product]) {
+        getColorForProduct.colorMap[product] = generateRandomColor(); // สร้างสีใหม่ให้สินค้า
+    }
+
+    return getColorForProduct.colorMap[product]; // ส่งคืนสีที่ถูกเก็บไว้
+}
+
+// ฟังก์ชันสร้างกราฟ
+function createChart(chartId, data, label) {
+    var ctx = document.getElementById(chartId).getContext('2d');
+    var labels = data.map(item => item.product);
+    var salesData = data.map(item => item.total_sales);
+
+    new Chart(ctx, {
+        type: 'bar',
+        data: {
+            labels: labels,
+            datasets: [{
+                label: label,
+                data: salesData,
+                backgroundColor: data.map(item => getColorForProduct(item.product)), // ใช้สีที่เหมือนกันตามชื่อสินค้า
+                borderColor: data.map(item => getColorForProduct(item.product)), // สีกรอบ
+                borderWidth: 1
+            }]
+        },
+        options: {
+            responsive: true,
+            scales: {
+                y: { beginAtZero: true }
+            }
+        }
+    });
+}
+
+// สร้างกราฟยอดขายสูงสุด
+createChart("bestSellingChart", bestSellingProducts, "ยอดขายสูงสุด");
+// สร้างกราฟยอดขายต่ำสุด
+createChart("worstSellingChart", worstSellingProducts, "ยอดขายต่ำสุด");
+
+</script>

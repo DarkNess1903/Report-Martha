@@ -10,11 +10,11 @@ if (!isset($_SESSION['user_id']) || $_SESSION['role'] != 'sales') {
 
 // ดึงข้อมูลยอดขายของพนักงานที่ล็อกอินอยู่
 $user_id = $_SESSION['user_id'];
-$sql = "SELECT year, quarter, SUM(amount) AS total_sales 
+$sql = "SELECT year, month, quarter, product, SUM(amount) AS total_sales
         FROM sales 
         WHERE user_id = ? 
-        GROUP BY year, quarter 
-        ORDER BY year DESC, quarter DESC";
+        GROUP BY year, month, quarter, product
+        ORDER BY year DESC, quarter DESC, month DESC";
 $stmt = $conn->prepare($sql);
 $stmt->bind_param("i", $user_id);
 $stmt->execute();
@@ -22,7 +22,7 @@ $result = $stmt->get_result();
 
 // สร้าง array สำหรับข้อมูลยอดขาย
 $sales_data = [];
-$years = [];
+$products = [];
 $months = [];
 $sales = [];
 
@@ -36,9 +36,8 @@ $quarter_to_month = [
 
 while ($row = $result->fetch_assoc()) {
     $sales_data[] = $row;
-    $years[] = $row['year'];
-    // แปลงไตรมาสเป็นเดือน
     $months[] = $quarter_to_month[$row['quarter']] . " " . $row['year'];
+    $products[$row['product']][] = $row['total_sales'];
     $sales[] = $row['total_sales'];
 }
 $stmt->close();
@@ -112,6 +111,7 @@ $stmt->close();
                             <tr>
                                 <th>เดือน/ไตรมาส</th>
                                 <th>ยอดขายรวม (บาท)</th>
+                                <th>สินค้า</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -119,6 +119,7 @@ $stmt->close();
                                 <tr>
                                     <td><?= htmlspecialchars($quarter_to_month[$data['quarter']]) ?> <?= $data['year'] ?></td>
                                     <td><?= number_format($data['total_sales'], 2) ?> บาท</td>
+                                    <td><?= htmlspecialchars($data['product']) ?></td>
                                 </tr>
                             <?php endforeach; ?>
                         </tbody>
