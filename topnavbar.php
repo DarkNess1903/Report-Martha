@@ -13,6 +13,9 @@
                             <a class="nav-link text-white" href="dashboard.php">Dashboard</a>
                         </li>
                         <li class="nav-item">
+                            <a class="nav-link text-white" href="retrospect.php">ยอดขายย้อนหลัง</a>
+                        </li>
+                        <li class="nav-item">
                             <a class="nav-link text-white" href="manage_sales.php">จัดการยอดขาย</a>
                         </li>
                         <li class="nav-item">

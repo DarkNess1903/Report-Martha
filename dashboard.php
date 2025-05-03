@@ -196,7 +196,8 @@ $conn->close();
                     return monthlyData[m] || 0;
                 }),
                 borderColor: 'rgba(75, 192, 192, 1)',
-                fill: false
+                fill: false,
+                tension: 0.3
             }]
         }
     });
@@ -218,7 +219,8 @@ $conn->close();
                         return productData[product][m] || 0;
                     }),
                     borderColor: generateHSLColor(index), // ใช้สีจากฟังก์ชัน HSL
-                    fill: false
+                    fill: false,
+                    tension: 0.3
                 };
             })
         }
@@ -258,38 +260,39 @@ $conn->close();
         var newLabels = [];
         var newDatasets = [];
 
-        if (selectedPeriod == "monthly") {
+        // กำหนด label
+        if (selectedPeriod === "monthly") {
             newLabels = ['มกราคม', 'กุมภาพันธ์', 'มีนาคม', 'เมษายน', 'พฤษภาคม', 'มิถุนายน', 'กรกฎาคม', 'สิงหาคม', 'กันยายน', 'ตุลาคม', 'พฤศจิกายน', 'ธันวาคม'];
-            newDatasets = Object.keys(productData).map(function(product) {
-                return {
-                    label: product,
-                    data: [1,2,3,4,5,6,7,8,9,10,11,12].map(function(m) {
-                        return productData[product][m] || 0;
-                    }),
-                    borderColor: 'rgba(75, 192, 192, 1)',
-                    fill: false
-                };
-            });
-        } else if (selectedPeriod == "quarterly") {
+        } else if (selectedPeriod === "quarterly") {
             newLabels = ['ไตรมาส 1', 'ไตรมาส 2', 'ไตรมาส 3', 'ไตรมาส 4'];
-            newDatasets = Object.keys(productData).map(function(product) {
-                return {
-                    label: product,
-                    data: [1,2,3,4].map(function(q) {
-                        return productData[product][q] || 0;
-                    }),
-                    borderColor: 'rgba(75, 192, 192, 1)',
-                    fill: false
-                };
-            });
         }
 
+        // สร้าง datasets
+        var products = Object.keys(productData);
+        newDatasets = products.map(function(product, index) {
+            var hue = (index * 360 / products.length); // สร้างสีไม่ซ้ำ
+            var dataPoints = (selectedPeriod === 'monthly'
+                ? [1,2,3,4,5,6,7,8,9,10,11,12]
+                : [1,2,3,4]
+            ).map(function(unit) {
+                return productData[product][unit] || 0;
+            });
+
+            return {
+                label: product,
+                data: dataPoints,
+                borderColor: `hsl(${hue}, 70%, 50%)`,
+                fill: false,
+                tension: 0.4 // ความโค้งของเส้น
+            };
+        });
+
+        // อัปเดตกราฟ
         productChart.data.labels = newLabels;
         productChart.data.datasets = newDatasets;
         productChart.update();
     });
 </script>
-
 
 <!-- เชื่อมต่อกับ Bootstrap JS -->
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/js/bootstrap.bundle.min.js"></script>

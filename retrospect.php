@@ -49,8 +49,9 @@ if ($result && $result->num_rows > 0) {
     }
 }
 
-// ดึงข้อมูลยอดขายย้อนหลัง 3 ปี (รวมปีปัจจุบัน)
-$past_years = [$current_year - 2, $current_year - 1, $current_year];
+// ดึงข้อมูลยอดขายย้อนหลัง 5 ปี (รวมปีปัจจุบัน)
+$current_year = date("Y"); // เพิ่มตัวแปรปีปัจจุบัน
+$past_years = [$current_year - 4, $current_year - 3, $current_year - 2, $current_year - 1, $current_year]; // 5 ปี
 $past_years_data = [];
 
 $sql = "SELECT year, month, SUM(amount) AS total 
@@ -139,14 +140,14 @@ $conn->close();
         <div class="col-12 mb-4">
             <div class="card shadow-sm">
                 <div class="card-body">
-                    <h5 class="card-title text-center">กราฟเปรียบเทียบยอดขายย้อนหลัง 3 ปี</h5>
+                    <h5 class="card-title text-center">กราฟเปรียบเทียบยอดขายย้อนหลัง 5 ปี</h5>
                     <canvas id="pastYearsChart"></canvas>
                 </div>
             </div>
         </div>
     </div>
 
-<script>
+    <script>
     // แปลงข้อมูลจาก PHP มาเป็น JavaScript object
     const monthlyData = <?= json_encode($monthly_data) ?>;
     const quarterlyData = <?= json_encode($quarterly_data) ?>;
@@ -170,7 +171,7 @@ $conn->close();
                 data: Array.from({ length: 12 }, (_, i) => monthlyData[i + 1] || 0),
                 borderColor: 'rgba(75,192,192,1)',
                 fill: false,
-                tension: 0.3
+                tension: 0.3  // ทำให้เส้นโค้ง
             }]
         }
     });
@@ -186,7 +187,7 @@ $conn->close();
                 data: Array.from({ length: 12 }, (_, m) => productData[product][m + 1] || 0),
                 borderColor: `hsl(${(i * 360 / Object.keys(productData).length)}, 70%, 50%)`,
                 fill: false,
-                tension: 0.3
+                tension: 0.3  // ทำให้เส้นโค้ง
             }))
         }
     });
@@ -211,10 +212,11 @@ $conn->close();
         timePeriodChart.update();
     });
 
-    // กราฟแสดงยอดขายย้อนหลัง 3 ปี
+    // กราฟแสดงยอดขายย้อนหลัง 5 ปี
     const ctxPastYears = document.getElementById('pastYearsChart').getContext('2d');
-    const colors = ['#007bff', '#28a745', '#ffc107']; // สีปี 3 ปี
+    const colors = ['#007bff', '#28a745', '#ffc107', '#dc3545', '#17a2b8']; // เพิ่มสีสำหรับปี 5 ปี
 
+    // กราฟย้อนหลัง 5 ปี
     const pastYearsChart = new Chart(ctxPastYears, {
         type: 'line',
         data: {
@@ -224,7 +226,7 @@ $conn->close();
                 data: Array.from({ length: 12 }, (_, m) => pastYearsData[year][m + 1] || 0),
                 borderColor: colors[idx % colors.length],
                 fill: false,
-                tension: 0.3
+                tension: 0.3  // ทำให้เส้นโค้ง
             }))
         },
         options: {
@@ -235,11 +237,14 @@ $conn->close();
                 },
                 title: {
                     display: true,
-                    text: 'ยอดขายย้อนหลัง 3 ปี'
+                    text: 'ยอดขายย้อนหลัง 5 ปี'
                 }
             }
         }
     });
+
+    // ตรวจสอบข้อมูลที่ส่งมาจาก PHP
+    console.log(pastYearsData);
 </script>
 
 </body>
