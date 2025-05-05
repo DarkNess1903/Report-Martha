@@ -28,10 +28,10 @@ $sales = [];
 
 // แปลงไตรมาสเป็นเดือน
 $quarter_to_month = [
-    '1' => 'มกราคม',
-    '2' => 'เมษายน',
-    '3' => 'กรกฎาคม',
-    '4' => 'ตุลาคม'
+    '1' => 'ไตรมาส 1',
+    '2' => 'ไตรมาส 2',
+    '3' => 'ไตรมาส 3',
+    '4' => 'ไตรมาส 4'
 ];
 
 while ($row = $result->fetch_assoc()) {
@@ -40,8 +40,34 @@ while ($row = $result->fetch_assoc()) {
     $products[$row['product']][] = $row['total_sales'];
     $sales[] = $row['total_sales'];
 }
+
+$labels_monthly = [];
+$labels_quarterly = [];
+$labels_yearly = [];
+
+foreach ($sales_data as $row) {
+    // รายเดือน
+    $labels_monthly[] = $row['month'] . "/" . $row['year'];
+    // รายไตรมาส
+    $labels_quarterly[] = $quarter_to_month[$row['quarter']] . " " . $row['year'];
+    // รายปี
+    $labels_yearly[] = $row['year'];
+}
+
+$labels_monthly = array_values(array_unique($labels_monthly));
+$labels_quarterly = array_values(array_unique($labels_quarterly));
+$labels_yearly = array_values(array_unique($labels_yearly));
+
 $stmt->close();
 ?>
+
+<script>
+    const labelsMonthly = <?= json_encode($labels_monthly) ?>;
+    const labelsQuarterly = <?= json_encode($labels_quarterly) ?>;
+    const labelsYearly = <?= json_encode($labels_yearly) ?>;
+    const salesDataFromPHP = <?= json_encode($sales_data) ?>;
+</script>
+
 
 <!DOCTYPE html>
 <html lang="en">
@@ -52,11 +78,6 @@ $stmt->close();
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
     <title>Dashboard - ยอดขายของคุณ</title>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <link rel="stylesheet" href="css/bootstrap.min.css">
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
 
   <!-- Favicons -->
   <link href="assets/img/ma2.png" rel="icon">
@@ -187,38 +208,56 @@ $stmt->close();
             var salesDataFromPHP = <?= json_encode($sales_data) ?>; // ข้อมูลยอดขายจาก PHP
 
             function updateChart() {
-                var selectedYears = Array.from(document.querySelectorAll('input[name="years[]"]:checked')).map(el => el.value);
-                
-                var datasets = [];
+                const selectedYears = Array.from(document.querySelectorAll('input[name="years[]"]:checked')).map(el => el.value);
+                const timePeriod = document.getElementById('timePeriodSelect').value;
 
-                selectedYears.forEach(function(year) {
-                    var dataset = {
-                        label: 'ยอดขายปี ' + year,
-                        data: Array(salesData.labels.length).fill(null), // กำหนดให้ทุกเดือนมีค่า null เริ่มต้น
-                        borderColor: 'rgba(75, 192, 192, 1)',
-                        backgroundColor: 'rgba(75, 192, 192, 0.2)',
-                        borderWidth: 2,
-                        lineTension: 0, // ทำให้เส้นตรง
-                        fill: false // ไม่ให้กราฟเป็นพื้นที่
-                    };
+                let labels = [];
+                if (timePeriod === 'monthly') {
+                    labels = labelsMonthly;
+                } else if (timePeriod === 'quarterly') {
+                    labels = labelsQuarterly;
+                } else if (timePeriod === 'yearly') {
+                    labels = labelsYearly;
+                }
 
-                    // ค้นหาข้อมูลยอดขายสำหรับปีนี้
-                    salesDataFromPHP.forEach(function(item) {
+                // สร้าง datasets
+                let datasets = [];
+
+                selectedYears.forEach(year => {
+                    let data = Array(labels.length).fill(null);
+
+                    salesDataFromPHP.forEach(item => {
                         if (item.year == year) {
-                            // แปลงไตรมาสเป็นเดือน
-                            var month = quarterToMonth[item.quarter];  // ใช้ quarterToMonth ที่ได้รับจาก PHP
-                            var index = salesData.labels.indexOf(month + " " + item.year);
+                            let labelKey = '';
+                            if (timePeriod === 'monthly') {
+                                labelKey = item.month + "/" + item.year;
+                            } else if (timePeriod === 'quarterly') {
+                                labelKey = quarterToMonth[item.quarter] + " " + item.year;
+                            } else if (timePeriod === 'yearly') {
+                                labelKey = item.year;
+                            }
+
+                            let index = labels.indexOf(labelKey);
                             if (index !== -1) {
-                                dataset.data[index] = item.total_sales;
+                                if (!data[index]) data[index] = 0;
+                                data[index] += parseFloat(item.total_sales);
                             }
                         }
                     });
 
-                    datasets.push(dataset);
+                    datasets.push({
+                        label: "ยอดขายปี " + year,
+                        data: data,
+                        borderColor: 'rgba(75, 192, 192, 1)',
+                        backgroundColor: 'rgba(75, 192, 192, 0.2)',
+                        borderWidth: 2,
+                        tension: 0.3,
+                        fill: false
+                    });
                 });
 
-                // อัปเดตข้อมูลในกราฟ
-                salesData.datasets = datasets;
+                salesChart.data.labels = labels;
+                salesChart.data.datasets = datasets;
                 salesChart.update();
             }
 
