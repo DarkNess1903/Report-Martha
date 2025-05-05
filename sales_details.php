@@ -255,31 +255,31 @@ while ($row = $result->fetch_assoc()) {
                     <input type="hidden" name="user_id" value="<?= $user_id ?>">
 
                     <div class="mb-3">
-                        <label class="form-label">ปี</label>
+                        <label class="form-label">ปี ตัวอย่าง (20xx)</label>
                         <input type="number" class="form-control" name="year" required>
                     </div>
 
                     <?php if ($timePeriod == 'monthly') { ?>
                         <div class="mb-3">
-                            <label class="form-label">เดือน</label>
+                            <label class="form-label">เดือน ตัวอย่าง (1,2,3,...)</label>
                             <input type="number" class="form-control" name="month" min="1" max="12">
                         </div>
                     <?php } ?>
 
                     <?php if ($timePeriod == 'quarterly') { ?>
                         <div class="mb-3">
-                            <label class="form-label">ไตรมาส</label>
+                            <label class="form-label">ไตรมาส ตัวอย่าง (1,2,3,4)</label>
                             <input type="number" class="form-control" name="quarter" min="1" max="4">
                         </div>
                     <?php } ?>
 
                     <div class="mb-3">
-                        <label class="form-label">สินค้า</label>
+                        <label class="form-label">สินค้า ตัวอย่าง (Product)</label>
                         <input type="text" class="form-control" name="product" required>
                     </div>
 
                     <div class="mb-3">
-                        <label class="form-label">ยอดขาย</label>
+                        <label class="form-label">ยอดขาย ตัวอย่าง (xxx)</label>
                         <input type="number" class="form-control" name="amount" required>
                     </div>
                 </div>
