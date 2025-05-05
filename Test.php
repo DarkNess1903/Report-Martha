@@ -193,25 +193,61 @@ $conn->close();
     </div>
 </div>
 
-    <!-- กราฟสินค้าขายดีและขายไม่ดี -->
-    <div class="row">
-        <div class="col-md-6">
-            <div class="card shadow-sm">
-                <div class="card-body">
-                    <h5 class="card-title">สินค้าขายดี 5 อันดับ</h5>
-                    <canvas id="bestSellingChart"></canvas>
+<!-- กราฟสินค้าขายดีและขายไม่ดี -->
+<div class="row">
+    <!-- กราฟสินค้าขายดี -->
+    <div class="col-md-6">
+        <div class="card shadow-sm">
+            <div class="card-body">
+                <h5 class="card-title">สินค้าขายดี 5 อันดับ</h5>
+
+                <!-- ปุ่มขยายกราฟ -->
+                <div class="d-flex justify-content-end mb-2">
+                    <button class="btn btn-sm btn-outline-primary" onclick="showFullScreenChart('bestSellingChart')">
+                        <i class="fas fa-expand"></i> ขยาย
+                    </button>
                 </div>
+
+                <canvas id="bestSellingChart"></canvas>
             </div>
         </div>
-        <div class="col-md-6">
-            <div class="card shadow-sm">
-                <div class="card-body">
-                    <h5 class="card-title">สินค้าขายไม่ดี 5 อันดับ</h5>
-                    <canvas id="worstSellingChart"></canvas>
+    </div>
+
+    <!-- กราฟสินค้าขายไม่ดี -->
+    <div class="col-md-6">
+        <div class="card shadow-sm">
+            <div class="card-body">
+                <h5 class="card-title">สินค้าขายไม่ดี 5 อันดับ</h5>
+
+                <!-- ปุ่มขยายกราฟ -->
+                <div class="d-flex justify-content-end mb-2">
+                    <button class="btn btn-sm btn-outline-primary" onclick="showFullScreenChart('worstSellingChart')">
+                        <i class="fas fa-expand"></i> ขยาย
+                    </button>
+                </div>
+
+                <canvas id="worstSellingChart"></canvas>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal สำหรับแสดงกราฟแบบเต็มหน้าจอ -->
+<div class="modal fade" id="chartModal" tabindex="-1" aria-labelledby="chartModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-fullscreen">
+        <div class="modal-content bg-white">
+            <div class="modal-header">
+                <h5 class="modal-title" id="chartModalLabel">กราฟแบบเต็มหน้าจอ</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="ปิด"></button>
+            </div>
+            <div class="modal-body p-0">
+                <div class="w-100 h-100">
+                    <canvas id="fullScreenChart" style="width:100% !important; height:100% !important;"></canvas>
                 </div>
             </div>
         </div>
     </div>
+</div>
 
 <script>
     var ctx1 = document.getElementById('timePeriodChart').getContext('2d');

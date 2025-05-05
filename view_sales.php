@@ -44,22 +44,57 @@ $quarter_to_month = [
     <link rel="stylesheet" href="css/bootstrap.min.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
     <title>ดูข้อมูลยอดขาย</title>
+
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" href="css/bootstrap.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+
+    <!-- Favicons -->
+    <link href="assets/img/ma2.png" rel="icon">
+    <link href="assets/img/ma2.png" rel="apple-touch-icon">
+
+    <!-- ลิงค์ของตาราง -->
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.10.0/css/all.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.4.1/font/bootstrap-icons.css" rel="stylesheet">
+
+
+    <!-- ไลบารี่ไอคอน -->
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.10.0/css/all.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.4.1/font/bootstrap-icons.css" rel="stylesheet">
+
+
+    <!-- Google Fonts -->
+    <link href="https://fonts.gstatic.com" rel="preconnect">
+    <link href="https://fonts.googleapis.com/css?family=Open+Sans:300,300i,400,400i,600,600i,700,700i|Nunito:300,300i,400,400i,600,600i,700,700i|Poppins:300,300i,400,400i,500,500i,600,600i,700,700i" rel="stylesheet">
+
+
+    <!-- Template Main CSS File -->
+    <link href="assets/css/style.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.10.0/css/all.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.4.1/font/bootstrap-icons.css" rel="stylesheet">
+    <link href="//cdn.datatables.net/1.13.4/css/jquery.dataTables.min.css" rel="stylesheet">
+    <!-- จบลิงค์ของตาราง -->
 </head>
 <body>
     <?php include 'topnavbar.php'; ?>
-
     <div class="container mt-5">
-        <h1 class="mb-4">ข้อมูลยอดขายของคุณ</h1>
+    <div class="col-md-12">
+            <div class="card shadow-sm">
+                 <div class="card-body">
+        <h2 class="mb-4">ข้อมูลยอดขายของคุณ</h2>
 
         <!-- ยอดขายรวมทั้งหมด -->
-        <div class="mb-4">
-            <h3>ยอดขายรวมทั้งหมด:</h3>
-            <p><?= number_format($total_sales_result->fetch_assoc()['total_sales'], 2) ?> บาท</p>
+        <div class="mb-4 d-flex justify-content-between align-items-center">
+            <h3 class="mb-0">ยอดขายรวมทั้งหมด:</h3>
+            <span><?= number_format($total_sales_result->fetch_assoc()['total_sales'], 2) ?> บาท</span>
         </div>
 
+        
         <!-- ตารางยอดขายตามปี -->
-        <table class="table table-bordered">
-            <thead>
+        <div class="table table-responsive">
+            <table id= "tabledata" class="table table-striped table-boredered">
+                <thead style="font-size: small;">
                 <tr>
                     <th>ปี</th>
                     <th>ยอดขายรวม (บาท)</th>
@@ -79,12 +114,20 @@ $quarter_to_month = [
                     </tr>
                 <?php endif; ?>
             </tbody>
-        </table>
+            </table>
+        </div>
+            </div>
+                </div>
+                    </div></br>
 
         <!-- ข้อมูลยอดขายตามไตรมาส -->
+        <div class="col-md-12">
+            <div class="card shadow-sm">
+                 <div class="card-body">
         <h3 class="mb-3">ข้อมูลยอดขายตามไตรมาส (ปีและไตรมาส):</h3>
-        <table class="table table-bordered">
-            <thead>
+        <div class="table table-responsive">
+            <table id= "tabledata1" class="table table-striped table-boredered">
+                <thead style="font-size: small;">
                 <tr>
                     <th>ปี</th>
                     <th>ไตรมาส</th>
@@ -115,9 +158,60 @@ $quarter_to_month = [
                     </tr>
                 <?php endif; ?>
             </tbody>
-        </table>
-
+          </table>
+        </div>
+            </div>
+            </div>
+                </div></br>
         <a href="employee_dashboard.php" class="btn btn-secondary">กลับไปยังหน้าหลัก</a>
-    </div>
+                </br></br>
+        </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.0.2/dist/js/bootstrap.bundle.min.js" integrity="sha384-MrcW6ZMFYlzcLA8Nl+NtUVF0sA7MsXsP1UyJoMp4YLEuNSfAP+JcXn/tWtIaxVXM" crossorigin="anonymous"></script>
+    <script src="https://code.jquery.com/jquery-3.7.0.min.js"></script>
+    <script src="//cdn.datatables.net/1.13.4/js/jquery.dataTables.min.js"></script>
+    <script type="text/javascript" charset="utf-8">
+        $(document).ready(function() {
+        $('#tabledata').dataTable( {
+        "oLanguage": {
+        "sLengthMenu": "แสดง MENU ข้อมูล",
+        "sZeroRecords": "ไม่พบข้อมูล",
+        "sInfo": "แสดง START ถึง END ของ TOTAL ข้อมูล",
+        "sInfoEmpty": "แสดง 0 ถึง 0 ของ 0 ข้อมูล",
+        "sInfoFiltered": "(จากข้อมูลทั้งหมด MAX ข้อมูล)",
+        "sSearch": "ค้นหา :",
+        "aaSorting" :[[0,'desc']],
+        "oPaginate": {
+        "sFirst":    "หน้าแรก",
+        "sPrevious": "ก่อนหน้า",
+        "sNext":     "ถัดไป",
+        "sLast":     "หน้าสุดท้าย"
+        },
+        }
+        } );
+        } );
+    </script>
+    <script type="text/javascript" charset="utf-8">
+        $(document).ready(function() {
+        $('#tabledata1').dataTable( {
+        "oLanguage": {
+        "sLengthMenu": "แสดง MENU ข้อมูล",
+        "sZeroRecords": "ไม่พบข้อมูล",
+        "sInfo": "แสดง START ถึง END ของ TOTAL ข้อมูล",
+        "sInfoEmpty": "แสดง 0 ถึง 0 ของ 0 ข้อมูล",
+        "sInfoFiltered": "(จากข้อมูลทั้งหมด MAX ข้อมูล)",
+        "sSearch": "ค้นหา :",
+        "aaSorting" :[[0,'desc']],
+        "oPaginate": {
+        "sFirst":    "หน้าแรก",
+        "sPrevious": "ก่อนหน้า",
+        "sNext":     "ถัดไป",
+        "sLast":     "หน้าสุดท้าย"
+        },
+        }
+        } );
+        } );
+    </script>
+
 </body>
 </html>

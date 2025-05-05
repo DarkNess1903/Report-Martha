@@ -127,7 +127,7 @@ $conn->close();
             <p>เลือกช่วงเวลาที่ต้องการแสดงข้อมูลยอดขาย</p>
         </div>
     </div>
-
+    
     <div class="row mb-4">
     <!-- กราฟยอดขาย -->
     <div class="col-md-6">
@@ -135,10 +135,18 @@ $conn->close();
             <div class="card-body">
                 <!-- ตัวเลือกในการเลือกช่วงเวลาที่ต้องการแสดง -->
                 <label for="timePeriodSelect">เลือกช่วงเวลายอดขาย:</label>
-                <select id="timePeriodSelect" class="form-select">
+                <select id="timePeriodSelect" class="form-select mb-2">
                     <option value="monthly">รายเดือน</option>
                     <option value="quarterly">รายไตรมาส</option>
                 </select>     
+
+                <!-- ปุ่มขยายกราฟ -->
+                <div class="d-flex justify-content-end mb-2">
+                    <button class="btn btn-sm btn-outline-primary" onclick="showFullScreenChart('timePeriodChart')">
+                        <i class="fas fa-expand"></i> ขยาย
+                    </button>
+                </div>
+
                 <!-- แสดงกราฟยอดขาย -->
                 <canvas id="timePeriodChart"></canvas>
             </div>
@@ -151,35 +159,96 @@ $conn->close();
             <div class="card-body">
                 <!-- ตัวเลือกช่วงเวลาในการแสดงกราฟสินค้า -->
                 <label for="productTimeSelect">เลือกช่วงเวลาสำหรับกราฟสินค้า:</label>
-                <select id="productTimeSelect" class="form-select">
+                <select id="productTimeSelect" class="form-select mb-2">
                     <option value="monthly">รายเดือน</option>
                     <option value="quarterly">รายไตรมาส</option>
                 </select>
+
+                <!-- ปุ่มขยายกราฟ -->
+                <div class="d-flex justify-content-end mb-2">
+                    <button class="btn btn-sm btn-outline-primary" onclick="showFullScreenChart('productChart')">
+                        <i class="fas fa-expand"></i> ขยาย
+                    </button>
+                </div>
+
                 <canvas id="productChart"></canvas> <!-- กราฟสินค้า -->
             </div>
         </div>
     </div>
 </div>
 
-    <!-- กราฟสินค้าขายดีและขายไม่ดี -->
-    <div class="row">
-        <div class="col-md-6">
-            <div class="card shadow-sm">
-                <div class="card-body">
-                    <h5 class="card-title">สินค้าขายดี 5 อันดับ</h5>
-                    <canvas id="bestSellingChart"></canvas>
-                </div>
+<!-- Modal แบบเต็มหน้าจอ (ใส่นอก .row) -->
+<div class="modal fade" id="chartModal" tabindex="-1" aria-labelledby="chartModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-fullscreen">
+        <div class="modal-content bg-white">
+            <div class="modal-header">
+                <h5 class="modal-title" id="chartModalLabel">กราฟแบบเต็มหน้าจอ</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="ปิด"></button>
             </div>
-        </div>
-        <div class="col-md-6">
-            <div class="card shadow-sm">
-                <div class="card-body">
-                    <h5 class="card-title">สินค้าขายไม่ดี 5 อันดับ</h5>
-                    <canvas id="worstSellingChart"></canvas>
+            <div class="modal-body p-0">
+                <div class="w-100 h-100">
+                    <canvas id="fullScreenChart" style="width:100% !important; height:100% !important;"></canvas>
                 </div>
             </div>
         </div>
     </div>
+</div>
+
+<!-- กราฟสินค้าขายดีและขายไม่ดี -->
+<div class="row">
+    <!-- กราฟสินค้าขายดี -->
+    <div class="col-md-6">
+        <div class="card shadow-sm">
+            <div class="card-body">
+                <h5 class="card-title">สินค้าขายดี 5 อันดับ</h5>
+
+                <!-- ปุ่มขยายกราฟ -->
+                <div class="d-flex justify-content-end mb-2">
+                    <button class="btn btn-sm btn-outline-primary" onclick="showFullScreenChart('bestSellingChart')">
+                        <i class="fas fa-expand"></i> ขยาย
+                    </button>
+                </div>
+
+                <canvas id="bestSellingChart"></canvas>
+            </div>
+        </div>
+    </div>
+
+    <!-- กราฟสินค้าขายไม่ดี -->
+    <div class="col-md-6">
+        <div class="card shadow-sm">
+            <div class="card-body">
+                <h5 class="card-title">สินค้าขายไม่ดี 5 อันดับ</h5>
+
+                <!-- ปุ่มขยายกราฟ -->
+                <div class="d-flex justify-content-end mb-2">
+                    <button class="btn btn-sm btn-outline-primary" onclick="showFullScreenChart('worstSellingChart')">
+                        <i class="fas fa-expand"></i> ขยาย
+                    </button>
+                </div>
+
+                <canvas id="worstSellingChart"></canvas>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal สำหรับแสดงกราฟแบบเต็มหน้าจอ -->
+<div class="modal fade" id="chartModal" tabindex="-1" aria-labelledby="chartModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-fullscreen">
+        <div class="modal-content bg-white">
+            <div class="modal-header">
+                <h5 class="modal-title" id="chartModalLabel">กราฟแบบเต็มหน้าจอ</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="ปิด"></button>
+            </div>
+            <div class="modal-body p-0">
+                <div class="w-100 h-100">
+                    <canvas id="fullScreenChart" style="width:100% !important; height:100% !important;"></canvas>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
 
 <script>
     var ctx1 = document.getElementById('timePeriodChart').getContext('2d');
@@ -291,6 +360,53 @@ $conn->close();
         productChart.data.labels = newLabels;
         productChart.data.datasets = newDatasets;
         productChart.update();
+    });
+
+    //เต็มจอ
+    let fullScreenChartInstance;
+
+    function showFullScreenChart(originalChartId) {
+        const originalChart = Chart.getChart(originalChartId);
+
+        if (!originalChart) {
+            console.error("ไม่พบกราฟที่ระบุ:", originalChartId);
+            return;
+        }
+
+        // ล้างกราฟก่อน
+        if (fullScreenChartInstance) {
+            fullScreenChartInstance.destroy();
+        }
+
+        const ctx = document.getElementById('fullScreenChart').getContext('2d');
+
+        // คัดลอกข้อมูลจากกราฟต้นฉบับ
+        fullScreenChartInstance = new Chart(ctx, {
+            type: originalChart.config.type,
+            data: JSON.parse(JSON.stringify(originalChart.data)),
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: { display: true },
+                    title: {
+                        display: true,
+                        text: originalChart.options.plugins?.title?.text || 'กราฟ'
+                    }
+                },
+                scales: originalChart.options.scales
+            }
+        });
+
+        const modal = new bootstrap.Modal(document.getElementById('chartModal'));
+        modal.show();
+    }
+
+    // รีเฟรชขนาดเมื่อแสดง modal
+    document.getElementById('chartModal').addEventListener('shown.bs.modal', () => {
+        if (fullScreenChartInstance) {
+            fullScreenChartInstance.resize();
+        }
     });
 </script>
 

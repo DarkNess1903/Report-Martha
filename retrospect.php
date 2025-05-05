@@ -89,7 +89,7 @@ $conn->close();
 <div class="container mt-5">
     <h2 class="text-center mb-4">แดชบอร์ดยอดขายย้อนหลัง</h2>
 
-    <!-- ฟอร์มเลือกปี -->
+<!-- ฟอร์มเลือกปี -->
 <div class="card shadow-sm mb-4 ">
     <div class="card-body">
         <form method="get" class="row align-items-center">
@@ -107,18 +107,29 @@ $conn->close();
     </div>
 </div>
 
+<div class="row mb-4">
 <!-- กราฟยอดขาย -->
-<div class="row">
-    <!-- กราฟรายเดือน/ไตรมาส -->
     <div class="col-md-6 mb-4">
         <div class="card shadow-sm h-100">
             <div class="card-body">
-                <h5 class="card-title text-center ">ยอดขายตามช่วงเวลา</h5>
-                <label for="timePeriodSelect" class="form-label">เลือกช่วงเวลา:</label>
-                <select id="timePeriodSelect" class="form-select mb-3">
-                    <option value="monthly">รายเดือน</option>
-                    <option value="quarterly">รายไตรมาส</option>
-                </select>
+                <h5 class="card-title text-center">ยอดขายตามช่วงเวลา</h5>
+                
+                <!-- บรรทัดเดียวกัน: เลือกช่วงเวลา + ปุ่มขยาย -->
+                <div class="row align-items-center mb-3">
+                    <div class="col-8">
+                        <label for="timePeriodSelect" class="form-label mb-1">เลือกช่วงเวลา:</label>
+                        <select id="timePeriodSelect" class="form-select form-select-sm">
+                            <option value="monthly">รายเดือน</option>
+                            <option value="quarterly">รายไตรมาส</option>
+                        </select>
+                    </div>
+                    <div class="col-4 text-end mt-4">
+                        <button class="btn btn-sm btn-outline-primary" onclick="showFullScreenChart('timePeriodChart')">
+                            <i class="fas fa-expand"></i> ขยาย
+                        </button>
+                    </div>
+                </div>
+
                 <canvas id="timePeriodChart"></canvas>
             </div>
         </div>
@@ -129,19 +140,50 @@ $conn->close();
         <div class="card shadow-sm h-100">
             <div class="card-body">
                 <h5 class="card-title text-center">ยอดขายแยกตามสินค้า</h5>
+
+                <!-- บรรทัดเดียวกัน: ปุ่มขยายเท่านั้น -->
+                <div class="d-flex justify-content-end mb-3">
+                    <button class="btn btn-sm btn-outline-primary" onclick="showFullScreenChart('productChart')">
+                        <i class="fas fa-expand"></i> ขยาย
+                    </button>
+                </div>
+
                 <canvas id="productChart"></canvas>
             </div>
         </div>
     </div>
 </div>
 
-    <!-- กราฟเปรียบเทียบยอดขายย้อนหลัง 3 ปี -->
-    <div class="row">
-        <div class="col-12 mb-4">
-            <div class="card shadow-sm">
-                <div class="card-body">
-                    <h5 class="card-title text-center">กราฟเปรียบเทียบยอดขายย้อนหลัง 5 ปี</h5>
-                    <canvas id="pastYearsChart"></canvas>
+    <!-- กราฟเปรียบเทียบยอดขายย้อนหลัง 5 ปี -->
+    <div class="col-12 mb-4">
+        <div class="card shadow-sm">
+            <div class="card-body">
+                <h5 class="card-title text-center">กราฟเปรียบเทียบยอดขายย้อนหลัง 5 ปี</h5>
+
+                <!-- ปุ่มขยาย -->
+                <div class="d-flex justify-content-end mb-2">
+                    <button class="btn btn-sm btn-outline-primary" onclick="showFullScreenChart('pastYearsChart')">
+                        <i class="fas fa-expand"></i> ขยาย
+                    </button>
+                </div>
+
+                <canvas id="pastYearsChart"></canvas>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal สำหรับแสดงกราฟเต็มจอ -->
+    <div class="modal fade" id="chartModal" tabindex="-1" aria-labelledby="chartModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-fullscreen">
+            <div class="modal-content bg-white">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="chartModalLabel">กราฟแบบเต็มหน้าจอ</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="ปิด"></button>
+                </div>
+                <div class="modal-body p-0">
+                    <div class="w-100 h-100">
+                        <canvas id="fullScreenChart" style="width:100% !important; height:100% !important;"></canvas>
+                    </div>
                 </div>
             </div>
         </div>
@@ -245,7 +287,54 @@ $conn->close();
 
     // ตรวจสอบข้อมูลที่ส่งมาจาก PHP
     console.log(pastYearsData);
+    
+    let fullScreenChartInstance;
+
+    function showFullScreenChart(originalChartId) {
+        const originalChart = Chart.getChart(originalChartId);
+        if (!originalChart) {
+            console.error("ไม่พบกราฟ:", originalChartId);
+            return;
+        }
+
+        if (fullScreenChartInstance) {
+            fullScreenChartInstance.destroy();
+        }
+
+        const ctx = document.getElementById('fullScreenChart').getContext('2d');
+
+        // Clone data และ options จาก original chart
+        fullScreenChartInstance = new Chart(ctx, {
+            type: originalChart.config.type,
+            data: JSON.parse(JSON.stringify(originalChart.data)),
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: { display: true },
+                    title: {
+                        display: true,
+                        text: originalChart.options.plugins?.title?.text || 'กราฟ'
+                    }
+                },
+                scales: originalChart.options.scales
+            }
+        });
+
+        const modal = new bootstrap.Modal(document.getElementById('chartModal'));
+        modal.show();
+    }
+
+    document.getElementById('chartModal').addEventListener('shown.bs.modal', () => {
+        if (fullScreenChartInstance) {
+            fullScreenChartInstance.resize();
+        }
+    });
+
 </script>
+
+<!-- เชื่อมต่อกับ Bootstrap JS -->
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/js/bootstrap.bundle.min.js"></script>
 
 </body>
 </html>
