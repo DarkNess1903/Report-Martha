@@ -78,6 +78,7 @@ $stmt->close();
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
     <title>Dashboard - ยอดขายของคุณ</title>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
 
   <!-- Favicons -->
   <link href="assets/img/ma2.png" rel="icon">
@@ -153,8 +154,30 @@ $stmt->close();
             <div class="row">
                 <!-- กราฟยอดขาย -->
                 <div class="col-md-6 mb-4 chart-container">
-                    <canvas id="salesChart" width="400" height="200"></canvas>
+                <div class="d-flex justify-content-end mb-2">
+                    <button class="btn btn-sm btn-outline-primary" onclick="showFullScreenChart('salesChart')">
+                        <i class="fas fa-expand"></i> ขยาย
+                    </button>
                 </div>
+                <canvas id="salesChart" width="400" height="200"></canvas>
+            </div>
+            
+            <!-- ขยายเต็มจอ -->
+            <div class="modal fade" id="chartModal" tabindex="-1" aria-labelledby="chartModalLabel" aria-hidden="true">
+                <div class="modal-dialog modal-fullscreen">
+                    <div class="modal-content bg-white">
+                        <div class="modal-header">
+                            <h5 class="modal-title" id="chartModalLabel">กราฟแบบเต็มหน้าจอ</h5>
+                            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="ปิด"></button>
+                        </div>
+                        <div class="modal-body p-0">
+                            <div class="w-100 h-100">
+                                <canvas id="fullScreenChart" style="width:100% !important; height:100% !important;"></canvas>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
 
                 <!-- ตารางยอดขาย -->
                 <div class="col-md-6">
@@ -307,6 +330,51 @@ $stmt->close();
             updateChart();
         });
     </script>
+    
+    <script>
+        let fullScreenChartInstance;
+
+        function showFullScreenChart(originalChartId) {
+            const originalChart = Chart.getChart(originalChartId);
+            if (!originalChart) {
+                console.error("ไม่พบกราฟ:", originalChartId);
+                return;
+            }
+
+            if (fullScreenChartInstance) {
+                fullScreenChartInstance.destroy();
+            }
+
+            const ctx = document.getElementById('fullScreenChart').getContext('2d');
+
+            fullScreenChartInstance = new Chart(ctx, {
+                type: originalChart.config.type,
+                data: JSON.parse(JSON.stringify(originalChart.data)),
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { display: true },
+                        title: {
+                            display: true,
+                            text: originalChart.options.plugins?.title?.text || 'กราฟ'
+                        }
+                    },
+                    scales: originalChart.options.scales
+                }
+            });
+
+            const modal = new bootstrap.Modal(document.getElementById('chartModal'));
+            modal.show();
+        }
+
+        document.getElementById('chartModal').addEventListener('shown.bs.modal', () => {
+            if (fullScreenChartInstance) {
+                fullScreenChartInstance.resize();
+            }
+        });
+    </script>
+
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.0.2/dist/js/bootstrap.bundle.min.js" integrity="sha384-MrcW6ZMFYlzcLA8Nl+NtUVF0sA7MsXsP1UyJoMp4YLEuNSfAP+JcXn/tWtIaxVXM" crossorigin="anonymous"></script>
     <script src="https://code.jquery.com/jquery-3.7.0.min.js"></script>
     <script src="//cdn.datatables.net/1.13.4/js/jquery.dataTables.min.js"></script>
