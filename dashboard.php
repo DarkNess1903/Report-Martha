@@ -179,15 +179,15 @@ $conn->close();
 
 <!-- Modal แบบเต็มหน้าจอ (ใส่นอก .row) -->
 <div class="modal fade" id="chartModal" tabindex="-1" aria-labelledby="chartModalLabel" aria-hidden="true">
-    <div class="modal-dialog modal-fullscreen">
+    <div class="modal-dialog modal-xl"> <!-- เปลี่ยนขนาดจาก fullscreen เป็น xl -->
         <div class="modal-content bg-white">
             <div class="modal-header">
-                <h5 class="modal-title" id="chartModalLabel">กราฟแบบเต็มหน้าจอ</h5>
+                <h5 class="modal-title fw-bold fs-4" id="chartModalLabel">กราฟแบบขยาย</h5>
                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="ปิด"></button>
             </div>
-            <div class="modal-body p-0">
-                <div class="w-100 h-100">
-                    <canvas id="fullScreenChart" style="width:100% !important; height:100% !important;"></canvas>
+            <div class="modal-body">
+                <div class="w-100" style="height:500px;"> <!-- กำหนดความสูงกราฟ -->
+                    <canvas id="fullScreenChart" style="width:100%; height:100%;"></canvas>
                 </div>
             </div>
         </div>
@@ -367,20 +367,14 @@ $conn->close();
 
     function showFullScreenChart(originalChartId) {
         const originalChart = Chart.getChart(originalChartId);
+        if (!originalChart) return;
 
-        if (!originalChart) {
-            console.error("ไม่พบกราฟที่ระบุ:", originalChartId);
-            return;
-        }
-
-        // ล้างกราฟก่อน
         if (fullScreenChartInstance) {
             fullScreenChartInstance.destroy();
         }
 
         const ctx = document.getElementById('fullScreenChart').getContext('2d');
 
-        // คัดลอกข้อมูลจากกราฟต้นฉบับ
         fullScreenChartInstance = new Chart(ctx, {
             type: originalChart.config.type,
             data: JSON.parse(JSON.stringify(originalChart.data)),
@@ -388,13 +382,37 @@ $conn->close();
                 responsive: true,
                 maintainAspectRatio: false,
                 plugins: {
-                    legend: { display: true },
+                    legend: {
+                        labels: {
+                            font: {
+                                size: 16 // เพิ่มขนาดตัวอักษรของ legend
+                            }
+                        }
+                    },
                     title: {
                         display: true,
-                        text: originalChart.options.plugins?.title?.text || 'กราฟ'
+                        text: originalChart.options.plugins?.title?.text || 'กราฟ',
+                        font: {
+                            size: 20 // ขนาดหัวข้อกราฟ
+                        }
                     }
                 },
-                scales: originalChart.options.scales
+                scales: {
+                    x: {
+                        ticks: {
+                            font: {
+                                size: 14 // แกน X
+                            }
+                        }
+                    },
+                    y: {
+                        ticks: {
+                            font: {
+                                size: 14 // แกน Y
+                            }
+                        }
+                    }
+                }
             }
         });
 
