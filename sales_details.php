@@ -75,6 +75,37 @@ while ($row = $result->fetch_assoc()) {
 <!DOCTYPE html>
 <html>
 <head>
+
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" href="css/bootstrap.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+
+  <!-- Favicons -->
+  <link href="assets/img/ma2.png" rel="icon">
+  <link href="assets/img/ma2.png" rel="apple-touch-icon">
+
+  <!-- ลิงค์ของตาราง -->
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.10.0/css/all.min.css" rel="stylesheet">
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.4.1/font/bootstrap-icons.css" rel="stylesheet">
+
+
+  <!-- ไลบารี่ไอคอน -->
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.10.0/css/all.min.css" rel="stylesheet">
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.4.1/font/bootstrap-icons.css" rel="stylesheet">
+
+
+  <!-- Google Fonts -->
+  <link href="https://fonts.gstatic.com" rel="preconnect">
+  <link href="https://fonts.googleapis.com/css?family=Open+Sans:300,300i,400,400i,600,600i,700,700i|Nunito:300,300i,400,400i,600,600i,700,700i|Poppins:300,300i,400,400i,500,500i,600,600i,700,700i" rel="stylesheet">
+
+
+  <!-- Template Main CSS File -->
+  <link href="assets/css/style.css" rel="stylesheet">
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.10.0/css/all.min.css" rel="stylesheet">
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.4.1/font/bootstrap-icons.css" rel="stylesheet">
+  <link href="//cdn.datatables.net/1.13.4/css/jquery.dataTables.min.css" rel="stylesheet">
+ <!-- จบลิงค์ของตาราง -->
     <title>Sales Report</title>
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css">
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
@@ -143,8 +174,8 @@ while ($row = $result->fetch_assoc()) {
                 </button>
             </div>
             <div class="card-body">
-                <table class="table table-bordered table-striped table-hover text-center">
-                    <thead class="table-dark">
+            <table id= "tabledata" class="table table-striped table-boredered">
+                <thead style="font-size: small;">
                         <tr>
                             <th>ปี</th>
                             <?php if ($timePeriod == 'monthly') echo '<th>เดือน</th>'; ?>
@@ -255,31 +286,31 @@ while ($row = $result->fetch_assoc()) {
                     <input type="hidden" name="user_id" value="<?= $user_id ?>">
 
                     <div class="mb-3">
-                        <label class="form-label">ปี ตัวอย่าง (20xx)</label>
+                        <label class="form-label">ปี</label>
                         <input type="number" class="form-control" name="year" required>
                     </div>
 
                     <?php if ($timePeriod == 'monthly') { ?>
                         <div class="mb-3">
-                            <label class="form-label">เดือน ตัวอย่าง (1,2,3,...)</label>
+                            <label class="form-label">เดือน</label>
                             <input type="number" class="form-control" name="month" min="1" max="12">
                         </div>
                     <?php } ?>
 
                     <?php if ($timePeriod == 'quarterly') { ?>
                         <div class="mb-3">
-                            <label class="form-label">ไตรมาส ตัวอย่าง (1,2,3,4)</label>
+                            <label class="form-label">ไตรมาส</label>
                             <input type="number" class="form-control" name="quarter" min="1" max="4">
                         </div>
                     <?php } ?>
 
                     <div class="mb-3">
-                        <label class="form-label">สินค้า ตัวอย่าง (Product)</label>
+                        <label class="form-label">สินค้า</label>
                         <input type="text" class="form-control" name="product" required>
                     </div>
 
                     <div class="mb-3">
-                        <label class="form-label">ยอดขาย ตัวอย่าง (xxx)</label>
+                        <label class="form-label">ยอดขาย</label>
                         <input type="number" class="form-control" name="amount" required>
                     </div>
                 </div>
@@ -428,6 +459,31 @@ new Chart(document.getElementById("totalSalesChart"), {
         }
     }
 });
+</script>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.0.2/dist/js/bootstrap.bundle.min.js" integrity="sha384-MrcW6ZMFYlzcLA8Nl+NtUVF0sA7MsXsP1UyJoMp4YLEuNSfAP+JcXn/tWtIaxVXM" crossorigin="anonymous"></script>
+<script src="https://code.jquery.com/jquery-3.7.0.min.js"></script>
+<script src="//cdn.datatables.net/1.13.4/js/jquery.dataTables.min.js"></script>
+<script type="text/javascript" charset="utf-8">
+      $(document).ready(function() {
+      $('#tabledata').dataTable( {
+      "oLanguage": {
+      "sLengthMenu": "แสดง MENU ข้อมูล",
+      "sZeroRecords": "ไม่พบข้อมูล",
+      "sInfo": "แสดง START ถึง END ของ TOTAL ข้อมูล",
+      "sInfoEmpty": "แสดง 0 ถึง 0 ของ 0 ข้อมูล",
+      "sInfoFiltered": "(จากข้อมูลทั้งหมด MAX ข้อมูล)",
+      "sSearch": "ค้นหา :",
+      "aaSorting" :[[0,'desc']],
+      "oPaginate": {
+      "sFirst":    "หน้าแรก",
+      "sPrevious": "ก่อนหน้า",
+      "sNext":     "ถัดไป",
+      "sLast":     "หน้าสุดท้าย"
+      },
+      }
+      } );
+      } );
 </script>
     
 </body>
