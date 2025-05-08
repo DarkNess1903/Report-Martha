@@ -127,10 +127,10 @@ while ($row = $result->fetch_assoc()) {
 <body>
     <?php include 'topnavbar.php'; ?>
     
-    <h2 class="text-center mb-4">📊 รายงานยอดขาย</h2>
+    <h2 class="text-center mb-4">รายงานยอดขาย</h2>
     <div class="card p-3 mb-4 text-center">
         <div class="d-flex justify-content-center align-items-center">
-            <label for="timePeriodSelect" class="form-label fw-bold me-3">🕒 เลือกช่วงเวลา:</label>
+            <label for="timePeriodSelect" class="form-label fw-bold me-3">เลือกช่วงเวลา:</label>
             <select id="timePeriodSelect" class="form-select w-25" onchange="updateTimePeriod()">
                 <option value="monthly" <?= ($timePeriod == 'monthly') ? 'selected' : '' ?>>รายเดือน</option>
                 <option value="quarterly" <?= ($timePeriod == 'quarterly') ? 'selected' : '' ?>>รายไตรมาส</option>
@@ -143,34 +143,34 @@ while ($row = $result->fetch_assoc()) {
     <div class="row">
         <div class="col-md-6">
             <div class="card shadow-sm p-3">
-                <h5 class="text-center">📊 ยอดขายสินค้า</h5>
+                <h5 class="text-center"> ยอดขายสินค้า</h5>
                 <canvas id="salesChart"></canvas>
             </div>
         </div>
         <div class="col-md-6">
             <div class="card shadow-sm p-3">
-                <h5 class="text-center">📈 ยอดขายรวมทุกช่วงเวลา</h5>
+                <h5 class="text-center"> ยอดขายรวมทุกช่วงเวลา</h5>
                 <canvas id="totalSalesChart"></canvas>
             </div>
         </div>
     </div>
 
     <div class="row mt-4">
-    <!-- กราฟ 📉 ยอดขายพนักงาน -->
+    <!-- กราฟยอดขายพนักงาน -->
     <div class="col-md-6">
         <div class="card shadow-sm p-3">
-            <h5 class="text-center">📉 ยอดขายพนักงาน</h5>
+            <h5 class="text-center">ยอดขายพนักงาน</h5>
             <canvas id="employeeSalesChart"></canvas>
         </div>
     </div>
 
-    <!-- ตาราง 📋 ข้อมูลยอดขาย -->
+    <!-- ตารางข้อมูลยอดขาย -->
     <div class="col-md-6">
         <div class="card shadow-sm">
             <div class="card-header d-flex justify-content-between align-items-center">
-                <h5 class="mb-0">📋 ข้อมูลยอดขาย</h5>
+                <h5 class="mb-0">ข้อมูลยอดขาย</h5>
                 <button type="button" class="btn btn-success btn-sm" data-bs-toggle="modal" data-bs-target="#addSaleModal">
-                    ➕ เพิ่มข้อมูล
+                     เพิ่มข้อมูล
                 </button>
             </div>
             <div class="card-body">
@@ -195,14 +195,16 @@ while ($row = $result->fetch_assoc()) {
                                 <td><?= number_format($row['amount'], 2) ?></td>
                                 <td>
                                     <!-- ปุ่มแก้ไข -->
-                                    <button type="button" class="btn btn-warning btn-sm" data-bs-toggle="modal" data-bs-target="#editModal<?= $row['id'] ?>">
-                                        ✏️
+                                    <button type="button" class="btn btn-warning btn-sm" data-bs-toggle="modal" data-bs-target="#editModal<?= $row['id'] ?>" title="แก้ไข">
+                                        <i class="fas fa-edit"></i>
                                     </button>
 
                                     <!-- ปุ่มลบ -->
                                     <form method="post" class="d-inline" onsubmit="return confirmAction('คุณแน่ใจหรือไม่ที่จะลบรายการนี้?')">
                                         <input type="hidden" name="sale_id" value="<?= $row['id'] ?>">
-                                        <button type="submit" name="delete_sale" class="btn btn-danger btn-sm">🗑️</button>
+                                        <button type="submit" name="delete_sale" class="btn btn-danger btn-sm" title="ลบ">
+                                            <i class="fas fa-trash-alt"></i>
+                                        </button>
                                     </form>
                                 </td>
                             </tr>
@@ -212,7 +214,7 @@ while ($row = $result->fetch_assoc()) {
                                 <div class="modal-dialog">
                                     <div class="modal-content">
                                         <div class="modal-header">
-                                            <h5 class="modal-title">📝 แก้ไขยอดขาย</h5>
+                                            <h5 class="modal-title">แก้ไขยอดขาย</h5>
                                             <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
                                         </div>
                                         <form method="post">
@@ -249,8 +251,12 @@ while ($row = $result->fetch_assoc()) {
                                                 </div>
                                             </div>
                                             <div class="modal-footer">
-                                                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">❌ ยกเลิก</button>
-                                                <button type="submit" name="edit_sale" class="btn btn-primary">💾 บันทึก</button>
+                                                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                                                    <i class="fas fa-times"></i> ยกเลิก
+                                                </button>
+                                                <button type="submit" name="edit_sale" class="btn btn-primary">
+                                                    <i class="fas fa-save"></i> บันทึก
+                                                </button>
                                             </div>
                                         </form>
                                     </div>
@@ -315,8 +321,8 @@ while ($row = $result->fetch_assoc()) {
                     </div>
                 </div>
                 <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">ยกเลิก</button>
-                    <button type="submit" name="add_sale" class="btn btn-primary">บันทึกข้อมูล</button>
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal"> <i class="fas fa-times"></i> ยกเลิก</button>
+                    <button type="submit" name="add_sale" class="btn btn-primary"> <i class="fas fa-save"></i> บันทึก</button>
                 </div>
             </form>
         </div>
