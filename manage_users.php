@@ -113,7 +113,7 @@ $result = $conn->query($sql);
         <?php endif; ?>
 
         <!-- ปุ่มเพิ่มพนักงาน -->
-        <button class="btn btn-success mb-3" data-bs-toggle="modal" data-bs-target="#addUserModal">
+        <button class="btn btn-success" data-bs-toggle="modal" data-bs-target="#addUserModal">
             <i class="fas fa-user-plus"></i> เพิ่มพนักงาน
         </button>
 

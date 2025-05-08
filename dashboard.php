@@ -177,7 +177,7 @@ $conn->close();
     </div>
 </div>
 
-<!-- Modal แบบเต็มหน้าจอ (ใส่นอก .row) -->
+<!-- Modal แบบเต็มหน้าจอ -->
 <div class="modal fade" id="chartModal" tabindex="-1" aria-labelledby="chartModalLabel" aria-hidden="true">
     <div class="modal-dialog modal-xl"> <!-- เปลี่ยนขนาดจาก fullscreen เป็น xl -->
         <div class="modal-content bg-white">
@@ -228,23 +228,6 @@ $conn->close();
                 </div>
 
                 <canvas id="worstSellingChart"></canvas>
-            </div>
-        </div>
-    </div>
-</div>
-
-<!-- Modal สำหรับแสดงกราฟแบบเต็มหน้าจอ -->
-<div class="modal fade" id="chartModal" tabindex="-1" aria-labelledby="chartModalLabel" aria-hidden="true">
-    <div class="modal-dialog modal-fullscreen">
-        <div class="modal-content bg-white">
-            <div class="modal-header">
-                <h5 class="modal-title" id="chartModalLabel">กราฟแบบเต็มหน้าจอ</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="ปิด"></button>
-            </div>
-            <div class="modal-body p-0">
-                <div class="w-100 h-100">
-                    <canvas id="fullScreenChart" style="width:100% !important; height:100% !important;"></canvas>
-                </div>
             </div>
         </div>
     </div>

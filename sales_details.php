@@ -80,6 +80,7 @@ while ($row = $result->fetch_assoc()) {
     <link rel="stylesheet" href="css/bootstrap.min.css">
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
 
   <!-- Favicons -->
   <link href="assets/img/ma2.png" rel="icon">
@@ -127,11 +128,15 @@ while ($row = $result->fetch_assoc()) {
 <body>
     <?php include 'topnavbar.php'; ?>
     
+    <div class="container mt-5">
+
     <h2 class="text-center mb-4">รายงานยอดขาย</h2>
+
+    <!-- เลือกเวลา -->
     <div class="card p-3 mb-4 text-center">
-        <div class="d-flex justify-content-center align-items-center">
+        <div class="d-flex justify-content-center align-items-center flex-wrap">
             <label for="timePeriodSelect" class="form-label fw-bold me-3">เลือกช่วงเวลา:</label>
-            <select id="timePeriodSelect" class="form-select w-25" onchange="updateTimePeriod()">
+            <select id="timePeriodSelect" class="form-select w-auto" onchange="updateTimePeriod()">
                 <option value="monthly" <?= ($timePeriod == 'monthly') ? 'selected' : '' ?>>รายเดือน</option>
                 <option value="quarterly" <?= ($timePeriod == 'quarterly') ? 'selected' : '' ?>>รายไตรมาส</option>
                 <option value="yearly" <?= ($timePeriod == 'yearly') ? 'selected' : '' ?>>รายปี</option>
@@ -139,40 +144,57 @@ while ($row = $result->fetch_assoc()) {
         </div>
     </div>
 
-    <!-- กราฟ -->
     <div class="row">
-        <div class="col-md-6">
-            <div class="card shadow-sm p-3">
-                <h5 class="text-center"> ยอดขายสินค้า</h5>
-                <canvas id="salesChart"></canvas>
-            </div>
-        </div>
-        <div class="col-md-6">
-            <div class="card shadow-sm p-3">
-                <h5 class="text-center"> ยอดขายรวมทุกช่วงเวลา</h5>
-                <canvas id="totalSalesChart"></canvas>
-            </div>
+    <!-- กราฟยอดขายสินค้า -->
+    <div class="col-md-6 mb-4">
+        <div class="card shadow-sm p-3 h-100 position-relative">
+            <button class="btn btn-sm btn-outline-primary position-absolute top-0 end-0 m-2"
+                onclick="showFullScreenChart('salesChart')">
+                <i class="fas fa-expand"></i> ขยาย
+            </button>
+            <h5 class="text-center mt-4">ยอดขายสินค้า</h5>
+            <canvas id="salesChart" style="margin-top: 10px;"></canvas>
         </div>
     </div>
 
-    <div class="row mt-4">
-    <!-- กราฟยอดขายพนักงาน -->
-    <div class="col-md-6">
-        <div class="card shadow-sm p-3">
-            <h5 class="text-center">ยอดขายพนักงาน</h5>
-            <canvas id="employeeSalesChart"></canvas>
+    <!-- กราฟยอดขายรวม -->
+    <div class="col-md-6 mb-4">
+        <div class="card shadow-sm p-3 h-100 position-relative">
+            <button class="btn btn-sm btn-outline-primary position-absolute top-0 end-0 m-2"
+                onclick="showFullScreenChart('totalSalesChart')">
+                <i class="fas fa-expand"></i> ขยาย
+            </button>
+            <h5 class="text-center mt-4">ยอดขายรวมทุกช่วงเวลา</h5>
+            <canvas id="totalSalesChart" style="margin-top: 10px;"></canvas>
+        </div>
+    </div>
+</div>
+
+    <!-- Modal แบบเต็มหน้าจอ -->
+    <div class="modal fade" id="chartModal" tabindex="-1" aria-labelledby="chartModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-xl"> <!-- เปลี่ยนขนาดจาก fullscreen เป็น xl -->
+            <div class="modal-content bg-white">
+                <div class="modal-header">
+                    <h5 class="modal-title fw-bold fs-4" id="chartModalLabel">กราฟแบบขยาย</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="ปิด"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="w-100" style="height:500px;"> <!-- กำหนดความสูงกราฟ -->
+                        <canvas id="fullScreenChart" style="width:100%; height:100%;"></canvas>
+                    </div>
+                </div>
+            </div>
         </div>
     </div>
 
     <!-- ตารางข้อมูลยอดขาย -->
-    <div class="col-md-6">
-        <div class="card shadow-sm">
-            <div class="card-header d-flex justify-content-between align-items-center">
-                <h5 class="mb-0">ข้อมูลยอดขาย</h5>
-                <button type="button" class="btn btn-success btn-sm" data-bs-toggle="modal" data-bs-target="#addSaleModal">
-                     เพิ่มข้อมูล
-                </button>
-            </div>
+    <div class="card shadow-sm">
+        <div class="card-header d-flex justify-content-between align-items-center">
+            <h5 class="mb-0">ข้อมูลยอดขาย</h5>
+            <button type="button" class="btn btn-success btn-sm" data-bs-toggle="modal" data-bs-target="#addSaleModal">
+                เพิ่มข้อมูล
+            </button>
+        </div>
             <div class="card-body">
             <table id= "tabledata" class="table table-striped table-boredered">
                 <thead style="font-size: small;">
@@ -269,7 +291,7 @@ while ($row = $result->fetch_assoc()) {
             </div>
         </div>
     </div>
-</div>
+<!-- </div> -->
 
     <script>
         function updateTimePeriod() {
@@ -398,40 +420,6 @@ new Chart(document.getElementById("salesChart"), {
     }
 });
 
-// 🔴 กราฟเส้น: ยอดขายรวมของพนักงาน
-new Chart(document.getElementById("employeeSalesChart"), {
-    type: "line",
-    data: {
-        labels: processedData.labels,
-        datasets: [{
-            label: "ยอดขายพนักงาน",
-            data: processedData.amounts,
-            borderColor: "rgba(75, 192, 192, 1)",
-            backgroundColor: "rgba(75, 192, 192, 0.2)",
-            borderWidth: 2,
-            fill: true
-        }]
-    },
-    options: {
-        responsive: true,
-        maintainAspectRatio: true,
-        scales: {
-            x: {
-                title: {
-                    display: true,
-                    text: "ช่วงเวลา"
-                }
-            },
-            y: {
-                title: {
-                    display: true,
-                    text: "ยอดขาย (บาท)"
-                }
-            }
-        }
-    }
-});
-
 // 🟢 กราฟเส้น: ยอดขายรวมทุกช่วงเวลา
 new Chart(document.getElementById("totalSalesChart"), {
     type: "line",
@@ -492,5 +480,72 @@ new Chart(document.getElementById("totalSalesChart"), {
       } );
 </script>
     
+<script>
+    //เต็มจอ
+    let fullScreenChartInstance;
+
+    function showFullScreenChart(originalChartId) {
+        const originalChart = Chart.getChart(originalChartId);
+        if (!originalChart) return;
+
+        if (fullScreenChartInstance) {
+            fullScreenChartInstance.destroy();
+        }
+
+        const ctx = document.getElementById('fullScreenChart').getContext('2d');
+
+        fullScreenChartInstance = new Chart(ctx, {
+            type: originalChart.config.type,
+            data: JSON.parse(JSON.stringify(originalChart.data)),
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        labels: {
+                            font: {
+                                size: 16 // เพิ่มขนาดตัวอักษรของ legend
+                            }
+                        }
+                    },
+                    title: {
+                        display: true,
+                        text: originalChart.options.plugins?.title?.text || 'กราฟ',
+                        font: {
+                            size: 20 // ขนาดหัวข้อกราฟ
+                        }
+                    }
+                },
+                scales: {
+                    x: {
+                        ticks: {
+                            font: {
+                                size: 14 // แกน X
+                            }
+                        }
+                    },
+                    y: {
+                        ticks: {
+                            font: {
+                                size: 14 // แกน Y
+                            }
+                        }
+                    }
+                }
+            }
+        });
+
+        const modal = new bootstrap.Modal(document.getElementById('chartModal'));
+        modal.show();
+    }
+
+    // รีเฟรชขนาดเมื่อแสดง modal
+    document.getElementById('chartModal').addEventListener('shown.bs.modal', () => {
+        if (fullScreenChartInstance) {
+            fullScreenChartInstance.resize();
+        }
+    });
+</script>
+
 </body>
 </html>

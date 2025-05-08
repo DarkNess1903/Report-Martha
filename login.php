@@ -32,32 +32,116 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
 ?>
 
 <!DOCTYPE html>
-<html lang="en">
+<html lang="th">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <link rel="stylesheet" href="css/bootstrap.min.css">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons/font/bootstrap-icons.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/css/bootstrap.min.css" rel="stylesheet">
     <title>เข้าสู่ระบบ</title>
+    <style>
+        body {
+            background: linear-gradient(135deg, #4e73df, #1cc88a);
+            background-attachment: fixed;
+            background-size: cover;
+            height: 100vh;
+        }
+        .card {
+            background-color: rgba(255, 255, 255, 0.95);
+            border-radius: 15px;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+        }
+        .login-container {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100%;
+        }
+        .card-body {
+            padding: 2rem;
+        }
+        .input-group-text {
+            background-color: #f0f0f0;
+        }
+        .card-title {
+            font-size: 1.75rem;
+            font-weight: 600;
+            margin-bottom: 1rem;
+        }
+        .footer-text {
+            font-size: 0.8rem;
+            color:rgb(0, 0, 0);
+            text-align: center;
+            margin-top: 2rem;
+        }
+        .btn-outline-primary {
+            width: 100%;
+            padding: 0.8rem;
+        }
+        .input-group-text, .form-control {
+            border-radius: 30px;
+        }
+    </style>
 </head>
-<body class="bg-light">
-    <div class="container d-flex justify-content-center align-items-center vh-100">
-        <div class="card p-4 shadow-lg" style="width: 100%; max-width: 400px;">
-            <h3 class="text-center mb-4">เข้าสู่ระบบ</h3>
-            <?php if (isset($error)): ?>
-                <div class="alert alert-danger" role="alert"><?= $error ?></div>
-            <?php endif; ?>
+<body>
+    <div class="login-container">
+        <div class="card shadow-lg p-4" style="width: 100%; max-width: 400px;">
+            <!-- โลโก้ระบบ -->
+            <div class="text-center mb-3">
+                <img src="img/logo.png" alt="โลโก้ระบบ" width="80">
+                <h4 class="mt-2">ระบบจัดการยอดขาย</h4>
+            </div>
+            <!-- ข้อความต้อนรับ -->
+            <p class="text-center text-muted">กรุณากรอกข้อมูลเพื่อเข้าสู่ระบบ</p>
+
+            <!-- ฟอร์มล็อกอิน -->
             <form method="POST" action="login.php">
-                <div class="mb-3">
-                    <label for="username" class="form-label">ชื่อผู้ใช้</label>
-                    <input type="text" class="form-control" id="username" name="username" required>
+                <?php if (isset($error)): ?>
+                    <div class="alert alert-danger" role="alert"><?= $error ?></div>
+                <?php endif; ?>
+                
+                <!-- ชื่อผู้ใช้ -->
+                <div class="input-group mb-3">
+                    <span class="input-group-text"><i class="bi bi-person"></i></span>
+                    <input type="text" class="form-control" name="username" id="username" placeholder="ชื่อผู้ใช้" required>
                 </div>
-                <div class="mb-3">
-                    <label for="password" class="form-label">รหัสผ่าน</label>
-                    <input type="password" class="form-control" id="password" name="password" required>
+                
+                <!-- รหัสผ่าน -->
+                <div class="input-group mb-3">
+                    <span class="input-group-text"><i class="bi bi-lock"></i></span>
+                    <input type="password" class="form-control" name="password" id="password" placeholder="รหัสผ่าน" required>
+                    <span class="input-group-text" onclick="togglePassword()" style="cursor: pointer;">
+                        <i class="bi bi-eye-slash" id="toggleIcon"></i>
+                    </span>
                 </div>
+                
+                <!-- ปุ่มเข้าสู่ระบบ -->
                 <button type="submit" class="btn btn-primary w-100">เข้าสู่ระบบ</button>
             </form>
+
+            <!-- ข้อความ Footer -->
+            <p class="footer-text">© 2025 Martha Group</p>
         </div>
     </div>
+
+    <!-- สคริปต์สำหรับเปิด/ปิดการแสดงรหัสผ่าน -->
+    <script>
+        function togglePassword() {
+            var passwordField = document.getElementById('password');
+            var toggleIcon = document.getElementById('toggleIcon');
+            
+            if (passwordField.type === 'password') {
+                passwordField.type = 'text';
+                toggleIcon.classList.remove('bi-eye-slash');
+                toggleIcon.classList.add('bi-eye');
+            } else {
+                passwordField.type = 'password';
+                toggleIcon.classList.remove('bi-eye');
+                toggleIcon.classList.add('bi-eye-slash');
+            }
+        }
+    </script>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/js/bootstrap.bundle.min.js"></script>
 </body>
 </html>
