@@ -95,7 +95,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
             <p class="text-center text-muted">กรุณากรอกข้อมูลเพื่อเข้าสู่ระบบ</p>
 
             <!-- ฟอร์มล็อกอิน -->
-            <form method="POST" action="login.php">
+            <form method="POST" action="index.php">
                 <?php if (isset($error)): ?>
                     <div class="alert alert-danger" role="alert"><?= $error ?></div>
                 <?php endif; ?>
