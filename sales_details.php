@@ -24,9 +24,9 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
         $year = $_POST['year'];
         $month = $_POST['month'] ?? null;
         $quarter = $_POST['quarter'] ?? null;
-        $product = $_POST['product'];
+        $product = strtolower(trim($_POST['product'])); // แปลงเป็นพิมพ์เล็กและตัดช่องว่าง
         $amount = isset($_POST['amount']) ? number_format(floatval($_POST['amount']), 2, '.', '') : '0.00';
-        
+
         $sql = "INSERT INTO sales (user_id, year, month, quarter, product, amount) VALUES (?, ?, ?, ?, ?, ?)";
         $stmt = $conn->prepare($sql);   
         $stmt->bind_param("iiissd", $user_id, $year, $month, $quarter, $product, $amount);
@@ -37,9 +37,9 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
         $year = $_POST['year'];
         $month = $_POST['month'] ?? null;
         $quarter = $_POST['quarter'] ?? null;
-        $product = $_POST['product'];
+        $product = strtolower(trim($_POST['product'])); // แปลงเป็นพิมพ์เล็กและตัดช่องว่าง
         $amount = isset($_POST['amount']) ? number_format(floatval($_POST['amount']), 2, '.', '') : '0.00';
-        
+
         $sql = "UPDATE sales SET year=?, month=?, quarter=?, product=?, amount=? WHERE id=?";
         $stmt = $conn->prepare($sql);
         $stmt->bind_param("iissdi", $year, $month, $quarter, $product, $amount, $sale_id);
@@ -47,7 +47,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
         $stmt->close();
     } elseif (isset($_POST['delete_sale'])) {
         $sale_id = $_POST['sale_id'];
-        
+
         $sql = "DELETE FROM sales WHERE id=?";
         $stmt = $conn->prepare($sql);
         $stmt->bind_param("i", $sale_id);
