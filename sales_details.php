@@ -8,6 +8,13 @@ if (!isset($_SESSION['user_id']) || $_SESSION['role'] != 'admin') {
     exit();
 }
 
+$monthNames = [
+    1 => 'มกราคม', 2 => 'กุมภาพันธ์', 3 => 'มีนาคม',
+    4 => 'เมษายน', 5 => 'พฤษภาคม', 6 => 'มิถุนายน',
+    7 => 'กรกฎาคม', 8 => 'สิงหาคม', 9 => 'กันยายน',
+    10 => 'ตุลาคม', 11 => 'พฤศจิกายน', 12 => 'ธันวาคม'
+];
+
 $user_id = isset($_GET['user_id']) ? $_GET['user_id'] : 0;
 $timePeriod = isset($_GET['timePeriod']) ? $_GET['timePeriod'] : 'monthly';
 
@@ -18,11 +25,11 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
         $month = $_POST['month'] ?? null;
         $quarter = $_POST['quarter'] ?? null;
         $product = $_POST['product'];
-        $amount = $_POST['amount'];
+        $amount = isset($_POST['amount']) ? number_format(floatval($_POST['amount']), 2, '.', '') : '0.00';
         
         $sql = "INSERT INTO sales (user_id, year, month, quarter, product, amount) VALUES (?, ?, ?, ?, ?, ?)";
-        $stmt = $conn->prepare($sql);
-        $stmt->bind_param("iiissi", $user_id, $year, $month, $quarter, $product, $amount);
+        $stmt = $conn->prepare($sql);   
+        $stmt->bind_param("iiissd", $user_id, $year, $month, $quarter, $product, $amount);
         $stmt->execute();
         $stmt->close();
     } elseif (isset($_POST['edit_sale'])) {
@@ -31,11 +38,11 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
         $month = $_POST['month'] ?? null;
         $quarter = $_POST['quarter'] ?? null;
         $product = $_POST['product'];
-        $amount = $_POST['amount'];
+        $amount = isset($_POST['amount']) ? number_format(floatval($_POST['amount']), 2, '.', '') : '0.00';
         
         $sql = "UPDATE sales SET year=?, month=?, quarter=?, product=?, amount=? WHERE id=?";
         $stmt = $conn->prepare($sql);
-        $stmt->bind_param("iissii", $year, $month, $quarter, $product, $amount, $sale_id);
+        $stmt->bind_param("iissdi", $year, $month, $quarter, $product, $amount, $sale_id);
         $stmt->execute();
         $stmt->close();
     } elseif (isset($_POST['delete_sale'])) {
@@ -211,7 +218,9 @@ while ($row = $result->fetch_assoc()) {
                         <?php foreach ($sales_data as $row) { ?>
                             <tr>
                                 <td><?= $row['year'] ?></td>
-                                <?php if ($timePeriod == 'monthly') echo '<td>' . ($row['month'] ?? '-') . '</td>'; ?>
+                                <?php if ($timePeriod == 'monthly'): ?>
+                                    <td><?= isset($monthNames[$row['month']]) ? $monthNames[$row['month']] : '-' ?></td>
+                                <?php endif; ?>
                                 <?php if ($timePeriod == 'quarterly') echo '<td>' . ($row['quarter'] ?? '-') . '</td>'; ?>
                                 <td><?= $row['product'] ?></td>
                                 <td><?= number_format($row['amount'], 2) ?></td>
@@ -251,7 +260,21 @@ while ($row = $result->fetch_assoc()) {
                                                 <?php if ($timePeriod == 'monthly') { ?>
                                                     <div class="mb-3">
                                                         <label class="form-label">เดือน</label>
-                                                        <input type="number" class="form-control" name="month" value="<?= $row['month'] ?? '' ?>" min="1" max="12">
+                                                        <select class="form-select" name="month" required>
+                                                            <?php
+                                                            $months = [
+                                                                1 => 'มกราคม', 2 => 'กุมภาพันธ์', 3 => 'มีนาคม',
+                                                                4 => 'เมษายน', 5 => 'พฤษภาคม', 6 => 'มิถุนายน',
+                                                                7 => 'กรกฎาคม', 8 => 'สิงหาคม', 9 => 'กันยายน',
+                                                                10 => 'ตุลาคม', 11 => 'พฤศจิกายน', 12 => 'ธันวาคม'
+                                                            ];
+                                                            foreach ($months as $num => $name):
+                                                            ?>
+                                                                <option value="<?= $num ?>" <?= (isset($row['month']) && $row['month'] == $num) ? 'selected' : '' ?>>
+                                                                    <?= $name ?>
+                                                                </option>
+                                                            <?php endforeach; ?>
+                                                        </select>
                                                     </div>
                                                 <?php } ?>
 
@@ -269,7 +292,15 @@ while ($row = $result->fetch_assoc()) {
 
                                                 <div class="mb-3">
                                                     <label class="form-label">ยอดขาย</label>
-                                                    <input type="number" class="form-control" name="amount" value="<?= $row['amount'] ?>" required>
+                                                    <input type="number" class="form-control"
+                                                        name="amount"
+                                                        step="0.01"
+                                                        min="0"
+                                                        inputmode="decimal"
+                                                        lang="en"
+                                                        value="<?= number_format((float)$row['amount'], 2, '.', '') ?>"
+                                                        placeholder="เช่น 1999.25 หรือ 2500.00"
+                                                        required>
                                                 </div>
                                             </div>
                                             <div class="modal-footer">
@@ -314,14 +345,28 @@ while ($row = $result->fetch_assoc()) {
                     <input type="hidden" name="user_id" value="<?= $user_id ?>">
 
                     <div class="mb-3">
-                        <label class="form-label">ปี</label>
-                        <input type="number" class="form-control" name="year" required>
+                        <label class="form-label">ปี ค.ศ</label>
+                        <input type="number" class="form-control" name="year" placeholder="20xx" required>
                     </div>
 
                     <?php if ($timePeriod == 'monthly') { ?>
                         <div class="mb-3">
                             <label class="form-label">เดือน</label>
-                            <input type="number" class="form-control" name="month" min="1" max="12">
+                            <select class="form-select" name="month" required>
+                                <option value="">-- เลือกเดือน --</option>
+                                <option value="1">มกราคม</option>
+                                <option value="2">กุมภาพันธ์</option>
+                                <option value="3">มีนาคม</option>
+                                <option value="4">เมษายน</option>
+                                <option value="5">พฤษภาคม</option>
+                                <option value="6">มิถุนายน</option>
+                                <option value="7">กรกฎาคม</option>
+                                <option value="8">สิงหาคม</option>
+                                <option value="9">กันยายน</option>
+                                <option value="10">ตุลาคม</option>
+                                <option value="11">พฤศจิกายน</option>
+                                <option value="12">ธันวาคม</option>
+                            </select>
                         </div>
                     <?php } ?>
 
@@ -334,13 +379,21 @@ while ($row = $result->fetch_assoc()) {
 
                     <div class="mb-3">
                         <label class="form-label">สินค้า</label>
-                        <input type="text" class="form-control" name="product" required>
+                        <input type="text" class="form-control" name="product" placeholder="Product 1" required>
                     </div>
 
                     <div class="mb-3">
                         <label class="form-label">ยอดขาย</label>
-                        <input type="number" class="form-control" name="amount" required>
+                        <input type="number" class="form-control" 
+                            name="amount" 
+                            step="0.01" 
+                            min="0" 
+                            inputmode="decimal"
+                            lang="en"
+                            placeholder="เช่น 1999.25 หรือ 2500.00" 
+                            required>
                     </div>
+
                 </div>
                 <div class="modal-footer">
                     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal"> <i class="fas fa-times"></i> ยกเลิก</button>
@@ -453,6 +506,16 @@ new Chart(document.getElementById("totalSalesChart"), {
         }
     }
 });
+</script>
+
+<script>
+    const amountInput = document.querySelector('input[name="amount"]');
+    amountInput.addEventListener('blur', function () {
+        let value = parseFloat(this.value);
+        if (!isNaN(value)) {
+            this.value = value.toFixed(2);
+        }
+    });
 </script>
 
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.0.2/dist/js/bootstrap.bundle.min.js" integrity="sha384-MrcW6ZMFYlzcLA8Nl+NtUVF0sA7MsXsP1UyJoMp4YLEuNSfAP+JcXn/tWtIaxVXM" crossorigin="anonymous"></script>
