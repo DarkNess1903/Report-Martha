@@ -20,13 +20,20 @@ $timePeriod = isset($_GET['timePeriod']) ? $_GET['timePeriod'] : 'monthly';
 
 // จัดการข้อมูลยอดขาย (เพิ่ม, ลบ, แก้ไข)
 if ($_SERVER['REQUEST_METHOD'] == 'POST') {
-    if (isset($_POST['add_sale'])) {
+        if (isset($_POST['add_sale'])) {
         $year = $_POST['year'];
         $month = $_POST['month'] ?? null;
-        $quarter = $_POST['quarter'] ?? null;
-        $product = strtoupper(trim($_POST['product'])); // แปลงเป็นพิมพ์เล็กและตัดช่องว่าง
-        $amount = isset($_POST['amount']) ? number_format(floatval($_POST['amount']), 2, '.', '') : '0.00';
 
+        // ✅ คำนวณไตรมาสจากเดือน
+        $quarter = null;
+        if ($month !== null) {
+            $month = intval($month);
+            if ($month >= 1 && $month <= 12) {
+                $quarter = ceil($month / 3);
+            }
+        }
+        $product = strtoupper(trim($_POST['product']));
+        $amount = isset($_POST['amount']) ? number_format(floatval($_POST['amount']), 2, '.', '') : '0.00';
         $sql = "INSERT INTO sales (user_id, year, month, quarter, product, amount) VALUES (?, ?, ?, ?, ?, ?)";
         $stmt = $conn->prepare($sql);   
         $stmt->bind_param("iiissd", $user_id, $year, $month, $quarter, $product, $amount);
@@ -36,7 +43,13 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
         $sale_id = $_POST['sale_id'];
         $year = $_POST['year'];
         $month = $_POST['month'] ?? null;
-        $quarter = $_POST['quarter'] ?? null;
+        $quarter = null;
+        if ($month !== null) {
+            $month = intval($month);
+            if ($month >= 1 && $month <= 12) {
+                $quarter = ceil($month / 3);
+            }
+        }
         $product = strtoupper(trim($_POST['product'])); // แปลงเป็นพิมพ์เล็กและตัดช่องว่าง
         $amount = isset($_POST['amount']) ? number_format(floatval($_POST['amount']), 2, '.', '') : '0.00';
 
@@ -278,13 +291,6 @@ while ($row = $result->fetch_assoc()) {
                                                     </div>
                                                 <?php } ?>
 
-                                                <?php if ($timePeriod == 'quarterly') { ?>
-                                                    <div class="mb-3">
-                                                        <label class="form-label">ไตรมาส</label>
-                                                        <input type="number" class="form-control" name="quarter" value="<?= $row['quarter'] ?? '' ?>" min="1" max="4">
-                                                    </div>
-                                                <?php } ?>
-
                                                 <div class="mb-3">
                                                     <label class="form-label">สินค้า</label>
                                                     <input type="text" class="form-control" name="product" value="<?= $row['product'] ?>" required>
@@ -367,13 +373,6 @@ while ($row = $result->fetch_assoc()) {
                                 <option value="11">พฤศจิกายน</option>
                                 <option value="12">ธันวาคม</option>
                             </select>
-                        </div>
-                    <?php } ?>
-
-                    <?php if ($timePeriod == 'quarterly') { ?>
-                        <div class="mb-3">
-                            <label class="form-label">ไตรมาส</label>
-                            <input type="number" class="form-control" name="quarter" min="1" max="4">
                         </div>
                     <?php } ?>
 
