@@ -33,19 +33,25 @@ $product_data = [];
 
 if ($result && $result->num_rows > 0) {
     while ($row = $result->fetch_assoc()) {
-        $month = $row['month'];
-        $quarter = $row['quarter'];
-        $product = $row['product'];
-        $amount = $row['total_amount'];
+        $month = $row['month'] ?? null;
+        $quarter = $row['quarter'] ?? null;
+        $product = $row['product'] ?? '';
+        $amount = $row['total_amount'] ?? 0;
 
         // รวมข้อมูลรายเดือน
-        $monthly_data[$month] = ($monthly_data[$month] ?? 0) + $amount;
+        if (!is_null($month)) {
+            $monthly_data[$month] = ($monthly_data[$month] ?? 0) + $amount;
+        }
 
-        // รวมข้อมูลรายไตรมาส
-        $quarterly_data[$quarter][] = $amount;
+        // รวมข้อมูลรายไตรมาส (ถ้ามีค่า)
+        if (!is_null($quarter)) {
+            $quarterly_data[$quarter] = ($quarterly_data[$quarter] ?? 0) + $amount;
+        }
 
         // รวมข้อมูลรายสินค้า
-        $product_data[$product][$month] = $amount;
+        if (!is_null($month)) {
+            $product_data[$product][$month] = $amount;
+        }
     }
 }
 
@@ -247,10 +253,7 @@ $conn->close();
         } else {
             timePeriodChart.data.labels = quarterLabels;
             timePeriodChart.data.datasets[0].label = 'ยอดขายรายไตรมาส';
-            timePeriodChart.data.datasets[0].data = [1, 2, 3, 4].map(q => {
-                const data = quarterlyData[q] || [];
-                return data.reduce((a, b) => a + b, 0);
-            });
+            timePeriodChart.data.datasets[0].data = [1, 2, 3, 4].map(q => quarterlyData[q] || 0);
         }
 
         timePeriodChart.update();

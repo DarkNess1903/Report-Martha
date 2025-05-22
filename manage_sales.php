@@ -7,15 +7,22 @@ if (!isset($_SESSION['user_id']) || $_SESSION['role'] != 'admin') {
     header('Location: login.php');
     exit();
 }
+$year_result = $conn->query("SELECT DISTINCT year FROM sales ORDER BY year DESC");
+$years = [];
+while ($row = $year_result->fetch_assoc()) {
+    $years[] = $row['year'];
+}
+$selected_year = isset($_GET['year']) ? intval($_GET['year']) : date("Y");
 
-// แสดงข้อมูลพนักงานทั้งหมด
 $sql = "SELECT users.id, users.username, 
                COALESCE(SUM(sales.amount), 0) AS total_sales 
         FROM users 
         LEFT JOIN sales ON users.id = sales.user_id 
+            AND sales.year = $selected_year
         WHERE users.role = 'sales'
         GROUP BY users.id, users.username";
 $result = $conn->query($sql);
+
 ?>
 
 <!DOCTYPE html>
@@ -62,17 +69,28 @@ $result = $conn->query($sql);
          <div class="col-md-12">
             <div class="card shadow-sm">
                  <div class="card-body">
-      
+
+      <form method="GET" class="mb-3">
+        <label for="year">เลือกปี:</label>
+        <select name="year" id="year" onchange="this.form.submit()" class="form-select w-auto d-inline-block">
+            <?php foreach ($years as $year): ?>
+                <option value="<?= $year ?>" <?= ($year == $selected_year) ? 'selected' : '' ?>>
+                    <?= $year ?>
+                </option>
+            <?php endforeach; ?>
+        </select>
+    </form>
+
         <!-- ตารางแสดงข้อมูลพนักงาน -->
         <div class="table table-responsive">
             <table id= "tabledata" class="table table-striped table-boredered">
                 <thead style="font-size: small;">
-        <tr>
-            <th>ลำดับ</th>
-            <th>พนักงานขาย</th>
-            <th>ยอดขายรวม (บาท)</th>
-            <th>ดูข้อมูลยอดขาย</th>
-        </tr>
+                    <tr>
+                        <th>ลำดับ</th>
+                        <th>พนักงานขาย</th>
+                        <th>ยอดขายรวม (บาท) ปี <?= $selected_year ?></th>
+                        <th>ดูข้อมูลยอดขาย</th>
+                    </tr>
     </thead>
         <tbody>
             <?php if ($result->num_rows > 0): ?>

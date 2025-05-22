@@ -58,6 +58,20 @@ $labels_monthly = array_values(array_unique($labels_monthly));
 $labels_quarterly = array_values(array_unique($labels_quarterly));
 $labels_yearly = array_values(array_unique($labels_yearly));
 
+// สรุปยอดขายรวมตามสินค้า
+$total_sales_per_product = [];
+foreach ($sales_data as $row) {
+    $product = $row['product'];
+    if (!isset($total_sales_per_product[$product])) {
+        $total_sales_per_product[$product] = 0;
+    }
+    $total_sales_per_product[$product] += $row['total_sales'];
+}
+
+// แยกข้อมูลสำหรับกราฟ
+$product_labels = array_keys($total_sales_per_product);
+$product_sales = array_values($total_sales_per_product);
+
 $stmt->close();
 ?>
 
@@ -140,28 +154,41 @@ $stmt->close();
                     </div>
                 </div>
 
-                <!-- ตัวเลือกในการเลือกช่วงเวลาที่ต้องการแสดง -->
-                <div class="col-md-12 mb-4">
-                    <label for="timePeriodSelect">เลือกช่วงเวลา:</label>
-                    <select id="timePeriodSelect" class="form-select">
-                        <option value="monthly">รายเดือน</option>
-                        <option value="quarterly">รายไตรมาส</option>
-                        <option value="yearly">รายปี</option>
-                    </select>
-                </div>
-            </div>
-
+            <!-- ส่วนแสดงกราฟและปุ่มขยาย -->
             <div class="row">
-                <!-- กราฟยอดขาย -->
                 <div class="col-md-6 mb-4 chart-container">
-                <div class="d-flex justify-content-end mb-2">
-                    <button class="btn btn-sm btn-outline-primary" onclick="showFullScreenChart('salesChart')">
-                        <i class="fas fa-expand"></i> ขยาย
-                    </button>
+                    <!-- แถวเลือกช่วงเวลา + ปุ่มขยาย -->
+                    <div class="d-flex justify-content-between align-items-center mb-2">
+                        <div class="d-flex align-items-center">
+                            <label for="timePeriodSelect" class="me-2 mb-0">เลือกช่วงเวลา:</label>
+                            <select id="timePeriodSelect" class="form-select" style="width:auto;">
+                                <option value="monthly">รายเดือน</option>
+                                <option value="quarterly">รายไตรมาส</option>
+                                <option value="yearly">รายปี</option>
+                            </select>
+                        </div>
+                        <button class="btn btn-sm btn-outline-primary" onclick="showFullScreenChart('salesChart')">
+                            <i class="fas fa-expand"></i> ขยาย
+                        </button>
+                    </div>
+
+                    <!-- กราฟยอดขาย -->
+                    <canvas id="salesChart" width="400" height="200"></canvas>
                 </div>
-                <canvas id="salesChart" width="400" height="200"></canvas>
+
+                <div class="col-md-6 mb-4 chart-container">
+                    <div class="d-flex justify-content-end mb-2">
+                        <button class="btn btn-sm btn-outline-primary" onclick="showFullScreenChart('productSalesChart')">
+                            <i class="fas fa-expand"></i> ขยาย
+                        </button>
+                    </div>
+                    <!-- กราฟยอดขายสินค้า -->
+                    <div style="width: 600px; max-width: 100%; margin: auto;">
+                        <canvas id="productSalesChart"></canvas>
+                    </div>
+                </div>
             </div>
-            
+                                
             <!-- ขยายเต็มจอ -->
             <div class="modal fade" id="chartModal" tabindex="-1" aria-labelledby="chartModalLabel" aria-hidden="true">
                 <div class="modal-dialog modal-xl"> <!-- เปลี่ยนขนาดจาก fullscreen เป็น xl -->
@@ -179,40 +206,65 @@ $stmt->close();
                 </div>
             </div>
 
-                <!-- ตารางยอดขาย -->
-                <div class="col-md-6">
-                <div class="card shadow-sm">
+            <?php
+            // สร้างอาร์เรย์ชื่อเดือนภาษาไทย
+            $thai_months = [
+                1 => 'มกราคม',
+                2 => 'กุมภาพันธ์',
+                3 => 'มีนาคม',
+                4 => 'เมษายน',
+                5 => 'พฤษภาคม',
+                6 => 'มิถุนายน',
+                7 => 'กรกฎาคม',
+                8 => 'สิงหาคม',
+                9 => 'กันยายน',
+                10 => 'ตุลาคม',
+                11 => 'พฤศจิกายน',
+                12 => 'ธันวาคม'
+            ];
+            ?>
+
+            <!-- ตารางยอดขาย --> 
+            <div class="card shadow-sm">
                 <div class="card-body">
-                <div class="table-responsive">
-                <table id= "tabledata" class="table table-striped table-boredered">
-                        <thead style="font-size: small;">
-                            <tr>
-                                <th>เดือน/ไตรมาส</th>
-                                <th>ยอดขายรวม (บาท)</th>
-                                <th>สินค้า</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            <?php foreach ($sales_data as $data): ?>
+                    <div class="table-responsive">
+                        <table id="tabledata" class="table table-striped table-bordered">
+                            <thead style="font-size: small;">
                                 <tr>
-                                    <td><?= htmlspecialchars($quarter_to_month[$data['quarter']]) ?> <?= $data['year'] ?></td>
-                                    <td><?= number_format($data['total_sales'], 2) ?> บาท</td>
-                                    <td><?= htmlspecialchars($data['product']) ?></td>
+                                    <th>ปี</th>
+                                    <th>เดือน</th>
+                                    <th>ยอดขายรวม (บาท)</th>
+                                    <th>สินค้า</th>
                                 </tr>
-                            <?php endforeach; ?>
-                        </tbody>
-                    </table>
+                            </thead>
+                            <tbody>
+                                <?php foreach ($sales_data as $data): ?>
+                                    <tr>
+                                        <td><?= htmlspecialchars($data['year']) ?></td>
+                                        <td>
+                                            <?php
+                                            // แปลงเลขเดือนเป็นชื่อเดือนภาษาไทย
+                                            if (!empty($data['month']) && $data['month'] != 0) {
+                                                echo htmlspecialchars($thai_months[(int)$data['month']]);
+                                            } else {
+                                                echo "-";  // กรณีไม่มีเดือน
+                                            }
+                                            ?>
+                                        </td>
+                                        <td><?= number_format($data['total_sales'], 2) ?> บาท</td>
+                                        <td><?= htmlspecialchars($data['product']) ?></td>
+                                    </tr>
+                                <?php endforeach; ?>
+                            </tbody>
+                        </table>
+                    </div>
                 </div>
-            </div>
-            </div>
-            </div>
             </div>
         <?php else: ?>
             <p>ยังไม่มีข้อมูลยอดขายของคุณในปีและไตรมาสนี้</p>
         <?php endif; ?>
     </div>
 
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="js/bootstrap.bundle.min.js"></script>
 
     <script>
@@ -395,6 +447,51 @@ $stmt->close();
             }
         });
     </script>
+
+    <script>
+    const ctx = document.getElementById('productSalesChart').getContext('2d');
+
+    const productSalesChart = new Chart(ctx, {
+        type: 'bar',
+        data: {
+            labels: <?php echo json_encode($product_labels); ?>,
+            datasets: [{
+                label: 'ยอดขายสินค้า (รวม)',
+                data: <?php echo json_encode($product_sales); ?>,
+                backgroundColor: 'rgba(54, 162, 235, 0.6)', // สีแท่งกราฟ
+                borderColor: 'rgba(54, 162, 235, 1)', // สีขอบแท่งกราฟ
+                borderWidth: 1
+            }]
+        },
+        options: {
+            responsive: true,
+            scales: {
+                y: {
+                    beginAtZero: true,
+                    title: {
+                        display: true,
+                        text: 'ยอดขาย (จำนวนเงิน)'
+                    }
+                },
+                x: {
+                    title: {
+                        display: true,
+                        text: 'สินค้า'
+                    }
+                }
+            },
+            plugins: {
+                legend: {
+                    display: true,
+                    position: 'top'
+                },
+                tooltip: {
+                    enabled: true
+                }
+            }
+        }
+    });
+</script>
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.0.2/dist/js/bootstrap.bundle.min.js" integrity="sha384-MrcW6ZMFYlzcLA8Nl+NtUVF0sA7MsXsP1UyJoMp4YLEuNSfAP+JcXn/tWtIaxVXM" crossorigin="anonymous"></script>
     <script src="https://code.jquery.com/jquery-3.7.0.min.js"></script>
