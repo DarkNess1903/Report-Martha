@@ -77,6 +77,29 @@ if ($result && $result->num_rows > 0) {
     }
 }
 
+// ดึงยอดขายรวมของพนักงานแต่ละคนในปีที่เลือก
+$sql = "SELECT u.username AS employee_name, SUM(s.amount) AS total_sales
+        FROM sales s
+        JOIN users u ON s.user_id = u.id
+        WHERE s.year = ?
+        GROUP BY s.user_id
+        ORDER BY total_sales DESC";
+
+$stmt = $conn->prepare($sql);
+$stmt->bind_param("i", $selected_year);
+$stmt->execute();
+$result = $stmt->get_result();
+
+$employee_labels = [];
+$employee_sales = [];
+
+while ($row = $result->fetch_assoc()) {
+    $employee_labels[] = $row['employee_name'];
+    $employee_sales[] = $row['total_sales'];
+}
+
+$stmt->close();
+
 $conn->close();
 ?>
 
@@ -160,6 +183,23 @@ $conn->close();
         </div>
     </div>
 </div>
+
+<!-- กราฟยอดขายพนักงานแต่ละคน -->
+     <div class="col-12 mb-4">
+        <div class="card shadow-sm">
+            <div class="card-body">
+                <div class="col-md-12 mb-4 chart-container">
+                    <div class="d-flex justify-content-between align-items-center mb-2">
+                        <h5 class="mb-0">ยอดขายพนักงาน ปี <?= $selected_year ?></h5>
+                        <button class="btn btn-sm btn-outline-primary" onclick="showFullScreenChart('employeeSalesChart')">
+                            <i class="fas fa-expand"></i> ขยาย
+                        </button>
+                    </div>
+                    <canvas id="employeeSalesChart" height="150"></canvas>
+                </div>
+            </div>
+        </div>
+    </div>
 
     <!-- กราฟเปรียบเทียบยอดขายย้อนหลัง 5 ปี -->
     <div class="col-12 mb-4">
@@ -285,6 +325,45 @@ $conn->close();
                 title: {
                     display: true,
                     text: 'ยอดขายย้อนหลัง 5 ปี'
+                }
+            }
+        }
+    });
+
+    // กราฟยอดขายพนักงานแต่ละคน
+    const employeeSalesCtx = document.getElementById('employeeSalesChart').getContext('2d');
+    const employeeSalesChart = new Chart(employeeSalesCtx, {
+        type: 'bar',
+        data: {
+            labels: <?= json_encode($employee_labels) ?>,
+            datasets: [{
+                label: 'ยอดขายรวม (บาท)',
+                data: <?= json_encode($employee_sales) ?>,
+                backgroundColor: 'rgba(54, 162, 235, 0.7)',
+                borderColor: 'rgba(54, 162, 235, 1)',
+                borderWidth: 1
+            }]
+        },
+        options: {
+            responsive: true,
+            scales: {
+                y: {
+                    beginAtZero: true,
+                    ticks: {
+                        callback: function(value) {
+                            return new Intl.NumberFormat('th-TH').format(value) + ' บาท';
+                        }
+                    }
+                }
+            },
+            plugins: {
+                legend: { display: false },
+                tooltip: {
+                    callbacks: {
+                        label: function(context) {
+                            return context.dataset.label + ': ' + context.formattedValue + ' บาท';
+                        }
+                    }
                 }
             }
         }
