@@ -8,6 +8,8 @@ if (!isset($_SESSION['user_id']) || $_SESSION['role'] != 'admin') {
     exit();
 }
 
+$selected_year = isset($_GET['year']) ? intval($_GET['year']) : date("Y");
+
 $monthNames = [
     1 => 'มกราคม', 2 => 'กุมภาพันธ์', 3 => 'มีนาคม',
     4 => 'เมษายน', 5 => 'พฤษภาคม', 6 => 'มิถุนายน',
@@ -67,21 +69,30 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
         $stmt->execute();
         $stmt->close();
     }
-    header("Location: sales_details.php?user_id=$user_id&timePeriod=$timePeriod");
+    header("Location: sales_details.php?user_id=$user_id&timePeriod=$timePeriod&year=$year");
     exit();
 }
 
 // ปรับ SQL Query ตามตัวเลือกช่วงเวลา
 if ($timePeriod == 'monthly') {
-    $sql = "SELECT id, year, month, product, amount FROM sales WHERE user_id = ? ORDER BY year ASC, month ASC";
+    $sql = "SELECT id, year, month, product, amount 
+            FROM sales 
+            WHERE user_id = ? AND year = ? 
+            ORDER BY year ASC, month ASC";
 } elseif ($timePeriod == 'quarterly') {
-    $sql = "SELECT id, year, quarter, product, amount FROM sales WHERE user_id = ? ORDER BY year ASC, quarter ASC";
+    $sql = "SELECT id, year, quarter, product, amount 
+            FROM sales 
+            WHERE user_id = ? AND year = ? 
+            ORDER BY year ASC, quarter ASC";
 } else {
-    $sql = "SELECT id, year, product, amount FROM sales WHERE user_id = ? ORDER BY year ASC";
+    $sql = "SELECT id, year, product, amount 
+            FROM sales 
+            WHERE user_id = ? AND year = ? 
+            ORDER BY year ASC";
 }
 
 $stmt = $conn->prepare($sql);
-$stmt->bind_param("i", $user_id);
+$stmt->bind_param("ii", $user_id, $selected_year);
 $stmt->execute();
 $result = $stmt->get_result();
 $stmt->close();
@@ -150,64 +161,7 @@ while ($row = $result->fetch_assoc()) {
     
     <div class="container mt-5">
 
-    <h2 class="text-center mb-4">รายงานยอดขาย</h2>
-
-    <!-- เลือกเวลา -->
-    <div class="card p-3 mb-4 text-center">
-        <div class="d-flex justify-content-center align-items-center flex-wrap">
-            <label for="timePeriodSelect" class="form-label fw-bold me-3">เลือกช่วงเวลา:</label>
-            <select id="timePeriodSelect" class="form-select w-auto" onchange="updateTimePeriod()">
-                <option value="monthly" <?= ($timePeriod == 'monthly') ? 'selected' : '' ?>>รายเดือน</option>
-                <option value="quarterly" <?= ($timePeriod == 'quarterly') ? 'selected' : '' ?>>รายไตรมาส</option>
-                <option value="yearly" <?= ($timePeriod == 'yearly') ? 'selected' : '' ?>>รายปี</option>
-            </select>
-        </div>
-    </div>
-
-    <div class="row">
-    <!-- กราฟยอดขายสินค้า -->
-    <div class="col-md-6 mb-4">
-        <div class="card shadow-sm p-3 h-100 position-relative">
-            <button class="btn btn-sm btn-outline-primary position-absolute top-0 end-0 m-2"
-                onclick="showFullScreenChart('salesChart')">
-                <i class="fas fa-expand"></i> ขยาย
-            </button>
-            <h5 class="text-center mt-4">ยอดขายสินค้า</h5>
-            <canvas id="salesChart" style="margin-top: 10px;"></canvas>
-        </div>
-    </div>
-
-    <!-- กราฟยอดขายรวม -->
-    <div class="col-md-6 mb-4">
-        <div class="card shadow-sm p-3 h-100 position-relative">
-            <button class="btn btn-sm btn-outline-primary position-absolute top-0 end-0 m-2"
-                onclick="showFullScreenChart('totalSalesChart')">
-                <i class="fas fa-expand"></i> ขยาย
-            </button>
-            <h5 class="text-center mt-4">ยอดขายรวมทุกช่วงเวลา</h5>
-            <canvas id="totalSalesChart" style="margin-top: 10px;"></canvas>
-        </div>
-    </div>
-</div>
-
-    <!-- Modal แบบเต็มหน้าจอ -->
-    <div class="modal fade" id="chartModal" tabindex="-1" aria-labelledby="chartModalLabel" aria-hidden="true">
-        <div class="modal-dialog modal-xl"> <!-- เปลี่ยนขนาดจาก fullscreen เป็น xl -->
-            <div class="modal-content bg-white">
-                <div class="modal-header">
-                    <h5 class="modal-title fw-bold fs-4" id="chartModalLabel">กราฟแบบขยาย</h5>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="ปิด"></button>
-                </div>
-                <div class="modal-body">
-                    <div class="w-100" style="height:500px;"> <!-- กำหนดความสูงกราฟ -->
-                        <canvas id="fullScreenChart" style="width:100%; height:100%;"></canvas>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <!-- ตารางข้อมูลยอดขาย -->
+        <!-- ตารางข้อมูลยอดขาย -->
     <div class="card shadow-sm">
         <div class="card-header d-flex justify-content-between align-items-center">
             <h5 class="mb-0">ข้อมูลยอดขาย</h5>
@@ -352,7 +306,7 @@ while ($row = $result->fetch_assoc()) {
 
                     <div class="mb-3">
                         <label class="form-label">ปี ค.ศ</label>
-                        <input type="number" class="form-control" name="year" placeholder="20xx" required>
+                        <input type="number" class="form-control" name="year" placeholder="เช่น 20xx" required>
                     </div>
 
                     <?php if ($timePeriod == 'monthly') { ?>
@@ -378,7 +332,7 @@ while ($row = $result->fetch_assoc()) {
 
                     <div class="mb-3">
                         <label class="form-label">สินค้า</label>
-                        <input type="text" class="form-control" name="product" placeholder="Product 1" required>
+                        <input type="text" class="form-control" name="product" placeholder="เช่น Product 1" required>
                     </div>
 
                     <div class="mb-3">
@@ -389,7 +343,7 @@ while ($row = $result->fetch_assoc()) {
                             min="0" 
                             inputmode="decimal"
                             lang="en"
-                            placeholder="เช่น 1999.25 หรือ 2500.00" 
+                            placeholder="เช่น 1999.25 หรือ 2500" 
                             required>
                     </div>
 
@@ -402,6 +356,66 @@ while ($row = $result->fetch_assoc()) {
         </div>
     </div>
 </div>
+
+    <div class="container mt-5">
+
+    <h2 class="text-center mb-4">รายงานยอดขาย</h2>
+
+    <!-- เลือกเวลา -->
+    <div class="card p-3 mb-4 text-center">
+        <div class="d-flex justify-content-center align-items-center flex-wrap">
+            <label for="timePeriodSelect" class="form-label fw-bold me-3">เลือกช่วงเวลา:</label>
+            <select id="timePeriodSelect" class="form-select w-auto" onchange="updateTimePeriod()">
+                <option value="monthly" <?= ($timePeriod == 'monthly') ? 'selected' : '' ?>>รายเดือน</option>
+                <option value="quarterly" <?= ($timePeriod == 'quarterly') ? 'selected' : '' ?>>รายไตรมาส</option>
+                <option value="yearly" <?= ($timePeriod == 'yearly') ? 'selected' : '' ?>>รายปี</option>
+            </select>
+        </div>
+    </div>
+
+    <div class="row">
+    <!-- กราฟยอดขายสินค้า -->
+    <div class="col-md-6 mb-4">
+        <div class="card shadow-sm p-3 h-100 position-relative">
+            <button class="btn btn-sm btn-outline-primary position-absolute top-0 end-0 m-2"
+                onclick="showFullScreenChart('salesChart')">
+                <i class="fas fa-expand"></i> ขยาย
+            </button>
+            <h5 class="text-center mt-4">ยอดขายสินค้า</h5>
+            <canvas id="salesChart" style="margin-top: 10px;"></canvas>
+        </div>
+    </div>
+
+    <!-- กราฟยอดขายรวม -->
+    <div class="col-md-6 mb-4">
+        <div class="card shadow-sm p-3 h-100 position-relative">
+            <button class="btn btn-sm btn-outline-primary position-absolute top-0 end-0 m-2"
+                onclick="showFullScreenChart('totalSalesChart')">
+                <i class="fas fa-expand"></i> ขยาย
+            </button>
+            <h5 class="text-center mt-4">ยอดขายรวมทุกช่วงเวลา</h5>
+            <canvas id="totalSalesChart" style="margin-top: 10px;"></canvas>
+        </div>
+    </div>
+</div>
+
+    <!-- Modal แบบเต็มหน้าจอ -->
+    <div class="modal fade" id="chartModal" tabindex="-1" aria-labelledby="chartModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-xl"> <!-- เปลี่ยนขนาดจาก fullscreen เป็น xl -->
+            <div class="modal-content bg-white">
+                <div class="modal-header">
+                    <h5 class="modal-title fw-bold fs-4" id="chartModalLabel">กราฟแบบขยาย</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="ปิด"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="w-100" style="height:500px;"> <!-- กำหนดความสูงกราฟ -->
+                        <canvas id="fullScreenChart" style="width:100%; height:100%;"></canvas>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
 
     
 <script>
@@ -516,30 +530,42 @@ new Chart(document.getElementById("totalSalesChart"), {
         }
     });
 </script>
+<!-- Vendor JS Files -->
+  <script src="assets/vendor/apexcharts/apexcharts.min.js"></script>
+  <script src="assets/vendor/bootstrap/js/bootstrap.bundle.min.js"></script>
+  <script src="assets/vendor/chart.js/chart.umd.js"></script>
+  <script src="assets/vendor/echarts/echarts.min.js"></script>
+  <script src="assets/vendor/quill/quill.min.js"></script>
+  <script src="assets/vendor/simple-datatables/simple-datatables.js"></script>
+  <script src="assets/vendor/tinymce/tinymce.min.js"></script>
+  <script src="assets/vendor/php-email-form/validate.js"></script>
 
-<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.0.2/dist/js/bootstrap.bundle.min.js" integrity="sha384-MrcW6ZMFYlzcLA8Nl+NtUVF0sA7MsXsP1UyJoMp4YLEuNSfAP+JcXn/tWtIaxVXM" crossorigin="anonymous"></script>
-<script src="https://code.jquery.com/jquery-3.7.0.min.js"></script>
-<script src="//cdn.datatables.net/1.13.4/js/jquery.dataTables.min.js"></script>
+  <!-- Template Main JS File -->
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.0.2/dist/js/bootstrap.bundle.min.js" integrity="sha384-MrcW6ZMFYlzcLA8Nl+NtUVF0sA7MsXsP1UyJoMp4YLEuNSfAP+JcXn/tWtIaxVXM" crossorigin="anonymous"></script>
+  <script src="https://code.jquery.com/jquery-3.7.0.min.js"></script>
+  <script src="//cdn.datatables.net/1.13.4/js/jquery.dataTables.min.js"></script>
+  <script src="assets/js/main-123.js"></script>
+
 <script type="text/javascript" charset="utf-8">
-      $(document).ready(function() {
-      $('#tabledata').dataTable( {
-      "oLanguage": {
-      "sLengthMenu": "แสดง MENU ข้อมูล",
-      "sZeroRecords": "ไม่พบข้อมูล",
-      "sInfo": "แสดง START ถึง END ของ TOTAL ข้อมูล",
-      "sInfoEmpty": "แสดง 0 ถึง 0 ของ 0 ข้อมูล",
-      "sInfoFiltered": "(จากข้อมูลทั้งหมด MAX ข้อมูล)",
-      "sSearch": "ค้นหา :",
-      "aaSorting" :[[0,'desc']],
-      "oPaginate": {
-      "sFirst":    "หน้าแรก",
-      "sPrevious": "ก่อนหน้า",
-      "sNext":     "ถัดไป",
-      "sLast":     "หน้าสุดท้าย"
-      },
-      }
-      } );
-      } );
+        $(document).ready(function() {
+        $('#tabledata').dataTable( {
+        "oLanguage": {
+        "sLengthMenu": "แสดง MENU ข้อมูล",
+        "sZeroRecords": "ไม่พบข้อมูล",
+        "sInfo": "แสดง START ถึง END ของ TOTAL ข้อมูล",
+        "sInfoEmpty": "แสดง 0 ถึง 0 ของ 0 ข้อมูล",
+        "sInfoFiltered": "(จากข้อมูลทั้งหมด MAX ข้อมูล)",
+        "sSearch": "ค้นหา :",
+        "aaSorting" :[[0,'desc']],
+        "oPaginate": {
+        "sFirst":    "หน้าแรก",
+        "sPrevious": "ก่อนหน้า",
+        "sNext":     "ถัดไป",
+        "sLast":     "หน้าสุดท้าย"
+        },
+        }
+        } );
+        } );
 </script>
     
 <script>

@@ -44,7 +44,6 @@ $result = $conn->query($sql);
 
 
   <!-- ไลบารี่ไอคอน -->
-  <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.10.0/css/all.min.css" rel="stylesheet">
   <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.4.1/font/bootstrap-icons.css" rel="stylesheet">
 
 
@@ -55,7 +54,6 @@ $result = $conn->query($sql);
 
   <!-- Template Main CSS File -->
   <link href="assets/css/style.css" rel="stylesheet">
-  <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.10.0/css/all.min.css" rel="stylesheet">
   <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.4.1/font/bootstrap-icons.css" rel="stylesheet">
   <link href="//cdn.datatables.net/1.13.4/css/jquery.dataTables.min.css" rel="stylesheet">
  <!-- จบลิงค์ของตาราง -->
@@ -100,7 +98,7 @@ $result = $conn->query($sql);
                         <td><?= htmlspecialchars($row['username']) ?></td>
                         <td><?= number_format($row['total_sales'], 2) ?> บาท</td>
                         <td>
-                            <a href="sales_details.php?user_id=<?= $row['id'] ?>" class="btn btn-info">ดูข้อมูล</a>
+                           <a href="sales_details.php?user_id=<?= $row['id'] ?>&year=<?= $selected_year ?>" class="btn btn-info">ดูข้อมูล</a>
                         </td>
                     </tr>
                 <?php endwhile; ?>

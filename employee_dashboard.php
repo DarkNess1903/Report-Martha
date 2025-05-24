@@ -22,8 +22,8 @@ $result = $stmt->get_result();
 
 // สร้าง array สำหรับข้อมูลยอดขาย
 $sales_data = [];
-$products = [];
 $months = [];
+$products = [];
 $sales = [];
 
 // แปลงไตรมาสเป็นเดือน
@@ -41,19 +41,18 @@ while ($row = $result->fetch_assoc()) {
     $sales[] = $row['total_sales'];
 }
 
+// เตรียม labels สำหรับแต่ละช่วงเวลา
 $labels_monthly = [];
 $labels_quarterly = [];
 $labels_yearly = [];
 
 foreach ($sales_data as $row) {
-    // รายเดือน
     $labels_monthly[] = $row['month'] . "/" . $row['year'];
-    // รายไตรมาส
     $labels_quarterly[] = $quarter_to_month[$row['quarter']] . " " . $row['year'];
-    // รายปี
     $labels_yearly[] = $row['year'];
 }
 
+// กำจัดค่าที่ซ้ำ
 $labels_monthly = array_values(array_unique($labels_monthly));
 $labels_quarterly = array_values(array_unique($labels_quarterly));
 $labels_yearly = array_values(array_unique($labels_yearly));
@@ -68,20 +67,42 @@ foreach ($sales_data as $row) {
     $total_sales_per_product[$product] += $row['total_sales'];
 }
 
-// แยกข้อมูลสำหรับกราฟ
+// เตรียมข้อมูลยอดขายสินค้าแยกตามปี
+$product_sales_by_year = [];
+foreach ($sales_data as $row) {
+    $year = $row['year'];
+    $product = $row['product'];
+    $amount = floatval($row['total_sales']);
+
+    if (!isset($product_sales_by_year[$year])) {
+        $product_sales_by_year[$year] = [];
+    }
+
+    if (!isset($product_sales_by_year[$year][$product])) {
+        $product_sales_by_year[$year][$product] = 0;
+    }
+
+    $product_sales_by_year[$year][$product] += $amount;
+}
+
+// สำหรับกราฟแท่งสินค้าเริ่มต้น (รวมทั้งหมด)
 $product_labels = array_keys($total_sales_per_product);
 $product_sales = array_values($total_sales_per_product);
 
 $stmt->close();
 ?>
 
+<!-- ส่งข้อมูลไป JavaScript -->
 <script>
+    const quarterToMonth = <?= json_encode($quarter_to_month) ?>;
     const labelsMonthly = <?= json_encode($labels_monthly) ?>;
     const labelsQuarterly = <?= json_encode($labels_quarterly) ?>;
     const labelsYearly = <?= json_encode($labels_yearly) ?>;
     const salesDataFromPHP = <?= json_encode($sales_data) ?>;
+    const productSalesByYear = <?= json_encode($product_sales_by_year) ?>;
+    const productLabels = <?= json_encode($product_labels) ?>;
+    const productSales = <?= json_encode($product_sales) ?>;
 </script>
-
 
 <!DOCTYPE html>
 <html lang="en">
@@ -268,227 +289,235 @@ $stmt->close();
     <script src="js/bootstrap.bundle.min.js"></script>
 
     <script>
-        document.addEventListener('DOMContentLoaded', function() {
-            var ctx = document.getElementById('salesChart').getContext('2d');
+    document.addEventListener('DOMContentLoaded', function () {
+        const ctxLine = document.getElementById('salesChart').getContext('2d');
+        const ctxBar = document.getElementById('productSalesChart').getContext('2d');
 
-            // ส่ง quarter_to_month จาก PHP ไปยัง JavaScript
-            var quarterToMonth = <?= json_encode($quarter_to_month) ?>;
+        const quarterToMonth = <?= json_encode($quarter_to_month) ?>;
+        const labelsMonthly = <?= json_encode($labels_monthly) ?>;
+        const labelsQuarterly = <?= json_encode($labels_quarterly) ?>;
+        const labelsYearly = <?= json_encode($labels_yearly) ?>;
+        const salesDataFromPHP = <?= json_encode($sales_data) ?>;
+        const productSalesByYear = <?= json_encode($product_sales_by_year) ?>;
 
-            // เตรียมข้อมูลสำหรับกราฟ
-            var salesData = {
-                labels: <?= json_encode($months) ?>, // เดือนที่แปลงจากไตรมาส
-                datasets: [] // จะมีข้อมูลที่อัปเดตตามการเลือกปี
-            };
-
-            var salesDataFromPHP = <?= json_encode($sales_data) ?>; // ข้อมูลยอดขายจาก PHP
-
-            function updateChart() {
-                const selectedYears = Array.from(document.querySelectorAll('input[name="years[]"]:checked')).map(el => el.value);
-                const timePeriod = document.getElementById('timePeriodSelect').value;
-
-                let labels = [];
-                if (timePeriod === 'monthly') {
-                    labels = labelsMonthly;
-                } else if (timePeriod === 'quarterly') {
-                    labels = labelsQuarterly;
-                } else if (timePeriod === 'yearly') {
-                    labels = labelsYearly;
-                }
-
-                // สร้าง datasets
-                let datasets = [];
-
-                selectedYears.forEach(year => {
-                    let data = Array(labels.length).fill(null);
-
-                    salesDataFromPHP.forEach(item => {
-                        if (item.year == year) {
-                            let labelKey = '';
-                            if (timePeriod === 'monthly') {
-                                labelKey = item.month + "/" + item.year;
-                            } else if (timePeriod === 'quarterly') {
-                                labelKey = quarterToMonth[item.quarter] + " " + item.year;
-                            } else if (timePeriod === 'yearly') {
-                                labelKey = item.year;
-                            }
-
-                            let index = labels.indexOf(labelKey);
-                            if (index !== -1) {
-                                if (!data[index]) data[index] = 0;
-                                data[index] += parseFloat(item.total_sales);
+        // ----------------- กราฟเส้นยอดขาย -----------------
+        const salesChart = new Chart(ctxLine, {
+            type: 'line',
+            data: {
+                labels: [],
+                datasets: []
+            },
+            options: {
+                responsive: true,
+                plugins: {
+                    legend: { position: 'top' },
+                    tooltip: {
+                        callbacks: {
+                            label: function (context) {
+                                const val = context.raw;
+                                return val ? `ยอดขาย: ${val.toLocaleString()} บาท` : 'ไม่มีข้อมูล';
                             }
                         }
-                    });
-
-                    datasets.push({
-                        label: "ยอดขายปี " + year,
-                        data: data,
-                        borderColor: 'rgba(75, 192, 192, 1)',
-                        backgroundColor: 'rgba(75, 192, 192, 0.2)',
-                        borderWidth: 2,
-                        tension: 0.3,
-                        fill: false
-                    });
-                });
-
-                salesChart.data.labels = labels;
-                salesChart.data.datasets = datasets;
-                salesChart.update();
-            }
-
-            // สร้างกราฟ
-            var salesChart = new Chart(ctx, {
-                type: 'line', // กราฟเป็นเส้น
-                data: salesData,
-                options: {
-                    responsive: true,
-                    plugins: {
-                        legend: {
-                            position: 'top',
-                        },
-                        tooltip: {
-                            callbacks: {
-                                label: function(tooltipItem) {
-                                    return 'ยอดขาย: ' + tooltipItem.raw ? tooltipItem.raw.toLocaleString() + ' บาท' : 'ไม่มีข้อมูล';
-                                }
-                            }
-                        }
-                    },
-                    scales: {
-                        y: {
-                            beginAtZero: true,
-                            ticks: {
-                                callback: function(value) {
-                                    if (value === null) {
-                                        return 'ไม่มีข้อมูล';
-                                    }
-                                    return value.toLocaleString();
-                                }
+                    }
+                },
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        ticks: {
+                            callback: function (value) {
+                                return value === null ? 'ไม่มีข้อมูล' : value.toLocaleString();
                             }
                         }
                     }
                 }
-            });
-
-            // ฟังการเปลี่ยนแปลงของ checkbox ปีที่เลือก
-            document.querySelectorAll('input[name="years[]"]').forEach(function(checkbox) {
-                checkbox.addEventListener('change', updateChart);
-            });
-
-            // ฟังการเปลี่ยนแปลงของช่วงเวลา
-            document.getElementById('timePeriodSelect').addEventListener('change', updateChart);
-
-            // เรียกฟังก์ชันเพื่ออัปเดตกกราฟครั้งแรกเมื่อโหลด
-            updateChart();
-        });
-    </script>
-    
-    <script>
-        let fullScreenChartInstance;
-
-        function showFullScreenChart(originalChartId) {
-            const originalChart = Chart.getChart(originalChartId);
-            if (!originalChart) return;
-
-            if (fullScreenChartInstance) {
-                fullScreenChartInstance.destroy();
             }
+        });
 
-            const ctx = document.getElementById('fullScreenChart').getContext('2d');
-
-            fullScreenChartInstance = new Chart(ctx, {
-                type: originalChart.config.type,
-                data: JSON.parse(JSON.stringify(originalChart.data)),
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    plugins: {
-                        legend: {
-                            labels: {
-                                font: {
-                                    size: 16 // เพิ่มขนาดตัวอักษรของ legend
-                                }
-                            }
-                        },
+        // ----------------- กราฟแท่งยอดขายสินค้า -----------------
+        const productSalesChart = new Chart(ctxBar, {
+            type: 'bar',
+            data: {
+                labels: [],
+                datasets: [{
+                    label: 'ยอดขายสินค้า (รวม)',
+                    data: [],
+                    backgroundColor: 'rgba(54, 162, 235, 0.6)',
+                    borderColor: 'rgba(54, 162, 235, 1)',
+                    borderWidth: 1
+                }]
+            },
+            options: {
+                responsive: true,
+                scales: {
+                    y: {
+                        beginAtZero: true,
                         title: {
                             display: true,
-                            text: originalChart.options.plugins?.title?.text || 'กราฟ',
-                            font: {
-                                size: 20 // ขนาดหัวข้อกราฟ
-                            }
+                            text: 'ยอดขาย (จำนวนเงิน)'
                         }
                     },
-                    scales: {
-                        x: {
-                            ticks: {
-                                font: {
-                                    size: 14 // แกน X
-                                }
-                            }
-                        },
-                        y: {
-                            ticks: {
-                                font: {
-                                    size: 14 // แกน Y
-                                }
-                            }
+                    x: {
+                        title: {
+                            display: true,
+                            text: 'สินค้า'
                         }
                     }
+                },
+                plugins: {
+                    legend: { display: true, position: 'top' },
+                    tooltip: { enabled: true }
+                }
+            }
+        });
+
+        // ----------------- ฟังก์ชันอัปเดตกกราฟเส้น -----------------
+        function updateLineChart() {
+            const selectedYears = Array.from(document.querySelectorAll('input[name="years[]"]:checked')).map(el => el.value);
+            const timePeriod = document.getElementById('timePeriodSelect').value;
+
+            let labels = [];
+            if (timePeriod === 'monthly') {
+                labels = labelsMonthly;
+            } else if (timePeriod === 'quarterly') {
+                labels = labelsQuarterly;
+            } else {
+                labels = labelsYearly;
+            }
+
+            const datasets = selectedYears.map(year => {
+                const data = Array(labels.length).fill(null);
+
+                salesDataFromPHP.forEach(item => {
+                    if (item.year == year) {
+                        let labelKey = '';
+                        if (timePeriod === 'monthly') {
+                            labelKey = item.month + "/" + item.year;
+                        } else if (timePeriod === 'quarterly') {
+                            labelKey = quarterToMonth[item.quarter] + " " + item.year;
+                        } else {
+                            labelKey = item.year;
+                        }
+
+                        const index = labels.indexOf(labelKey);
+                        if (index !== -1) {
+                            if (!data[index]) data[index] = 0;
+                            data[index] += parseFloat(item.total_sales);
+                        }
+                    }
+                });
+
+                return {
+                    label: `ยอดขายปี ${year}`,
+                    data: data,
+                    borderColor: 'rgba(75, 192, 192, 1)',
+                    backgroundColor: 'rgba(75, 192, 192, 0.2)',
+                    borderWidth: 2,
+                    tension: 0.3,
+                    fill: false
+                };
+            });
+
+            salesChart.data.labels = labels;
+            salesChart.data.datasets = datasets;
+            salesChart.update();
+        }
+
+        // ----------------- ฟังก์ชันอัปเดตกกราฟสินค้า -----------------
+        function updateProductChart() {
+            const selectedYears = Array.from(document.querySelectorAll('input[name="years[]"]:checked')).map(el => el.value);
+            const aggregatedSales = {};
+
+            selectedYears.forEach(year => {
+                if (productSalesByYear[year]) {
+                    Object.entries(productSalesByYear[year]).forEach(([product, value]) => {
+                        if (!aggregatedSales[product]) aggregatedSales[product] = 0;
+                        aggregatedSales[product] += parseFloat(value);
+                    });
                 }
             });
 
-            const modal = new bootstrap.Modal(document.getElementById('chartModal'));
-            modal.show();
+            productSalesChart.data.labels = Object.keys(aggregatedSales);
+            productSalesChart.data.datasets[0].data = Object.values(aggregatedSales);
+            productSalesChart.update();
         }
 
-        document.getElementById('chartModal').addEventListener('shown.bs.modal', () => {
-            if (fullScreenChartInstance) {
-                fullScreenChartInstance.resize();
+        // ----------------- ผูก event -----------------
+        document.querySelectorAll('input[name="years[]"]').forEach(el => {
+            el.addEventListener('change', () => {
+                updateLineChart();
+                updateProductChart();
+            });
+        });
+
+        document.getElementById('timePeriodSelect').addEventListener('change', updateLineChart);
+
+        // เรียกใช้งานครั้งแรก
+        updateLineChart();
+        updateProductChart();
+    });
+</script>
+
+<script>
+    let fullScreenChartInstance;
+
+    function showFullScreenChart(originalChartId) {
+        const originalChart = Chart.getChart(originalChartId);
+        if (!originalChart) return;
+
+        if (fullScreenChartInstance) {
+            fullScreenChartInstance.destroy();
+        }
+
+        const ctx = document.getElementById('fullScreenChart').getContext('2d');
+
+        fullScreenChartInstance = new Chart(ctx, {
+            type: originalChart.config.type,
+            data: JSON.parse(JSON.stringify(originalChart.data)),
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        labels: {
+                            font: {
+                                size: 16 // เพิ่มขนาดตัวอักษรของ legend
+                            }
+                        }
+                    },
+                    title: {
+                        display: true,
+                        text: originalChart.options.plugins?.title?.text || 'กราฟ',
+                        font: {
+                            size: 20 // ขนาดหัวข้อกราฟ
+                        }
+                    }
+                },
+                scales: {
+                    x: {
+                        ticks: {
+                            font: {
+                                size: 14 // แกน X
+                            }
+                        }
+                    },
+                    y: {
+                        ticks: {
+                            font: {
+                                size: 14 // แกน Y
+                            }
+                        }
+                    }
+                }
             }
         });
-    </script>
 
-    <script>
-    const ctx = document.getElementById('productSalesChart').getContext('2d');
+        const modal = new bootstrap.Modal(document.getElementById('chartModal'));
+        modal.show();
+    }
 
-    const productSalesChart = new Chart(ctx, {
-        type: 'bar',
-        data: {
-            labels: <?php echo json_encode($product_labels); ?>,
-            datasets: [{
-                label: 'ยอดขายสินค้า (รวม)',
-                data: <?php echo json_encode($product_sales); ?>,
-                backgroundColor: 'rgba(54, 162, 235, 0.6)', // สีแท่งกราฟ
-                borderColor: 'rgba(54, 162, 235, 1)', // สีขอบแท่งกราฟ
-                borderWidth: 1
-            }]
-        },
-        options: {
-            responsive: true,
-            scales: {
-                y: {
-                    beginAtZero: true,
-                    title: {
-                        display: true,
-                        text: 'ยอดขาย (จำนวนเงิน)'
-                    }
-                },
-                x: {
-                    title: {
-                        display: true,
-                        text: 'สินค้า'
-                    }
-                }
-            },
-            plugins: {
-                legend: {
-                    display: true,
-                    position: 'top'
-                },
-                tooltip: {
-                    enabled: true
-                }
-            }
+    document.getElementById('chartModal').addEventListener('shown.bs.modal', () => {
+        if (fullScreenChartInstance) {
+            fullScreenChartInstance.resize();
         }
     });
 </script>
