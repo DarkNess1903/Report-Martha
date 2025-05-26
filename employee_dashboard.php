@@ -20,44 +20,45 @@ $stmt->bind_param("i", $user_id);
 $stmt->execute();
 $result = $stmt->get_result();
 
-// สร้าง array สำหรับข้อมูลยอดขาย
 $sales_data = [];
-$months = [];
-$products = [];
-$sales = [];
 
-// แปลงไตรมาสเป็นเดือน
+// แปลงไตรมาสเป็นชื่อไตรมาส
 $quarter_to_month = [
-    '1' => 'ไตรมาส 1',
-    '2' => 'ไตรมาส 2',
-    '3' => 'ไตรมาส 3',
-    '4' => 'ไตรมาส 4'
+    1 => 'ไตรมาส 1',
+    2 => 'ไตรมาส 2',
+    3 => 'ไตรมาส 3',
+    4 => 'ไตรมาส 4'
 ];
 
 while ($row = $result->fetch_assoc()) {
     $sales_data[] = $row;
-    $months[] = $quarter_to_month[$row['quarter']] . " " . $row['year'];
-    $products[$row['product']][] = $row['total_sales'];
-    $sales[] = $row['total_sales'];
 }
 
-// เตรียม labels สำหรับแต่ละช่วงเวลา
-$labels_monthly = [];
-$labels_quarterly = [];
+$monthNames = [
+    1 => 'มกราคม', 2 => 'กุมภาพันธ์', 3 => 'มีนาคม',
+    4 => 'เมษายน', 5 => 'พฤษภาคม', 6 => 'มิถุนายน',
+    7 => 'กรกฎาคม', 8 => 'สิงหาคม', 9 => 'กันยายน',
+    10 => 'ตุลาคม', 11 => 'พฤศจิกายน', 12 => 'ธันวาคม'
+];
+
+// === สร้าง Labels สำหรับกราฟ ===
+// เดือน (12 เดือน)
+$labels_monthly = array_values($monthNames);
+
+// ไตรมาส (4 ไตรมาส)
+$labels_quarterly = array_values($quarter_to_month);
+
+// ปีที่มีข้อมูล (ไม่ซ้ำ)
 $labels_yearly = [];
-
 foreach ($sales_data as $row) {
-    $labels_monthly[] = $row['month'] . "/" . $row['year'];
-    $labels_quarterly[] = $quarter_to_month[$row['quarter']] . " " . $row['year'];
-    $labels_yearly[] = $row['year'];
+    $year = (int)$row['year'];
+    if (!in_array($year, $labels_yearly)) {
+        $labels_yearly[] = $year;
+    }
 }
+sort($labels_yearly); // เรียงปี
 
-// กำจัดค่าที่ซ้ำ
-$labels_monthly = array_values(array_unique($labels_monthly));
-$labels_quarterly = array_values(array_unique($labels_quarterly));
-$labels_yearly = array_values(array_unique($labels_yearly));
-
-// สรุปยอดขายรวมตามสินค้า
+// === สรุปยอดขายรวมตามสินค้า ===
 $total_sales_per_product = [];
 foreach ($sales_data as $row) {
     $product = $row['product'];
@@ -67,7 +68,7 @@ foreach ($sales_data as $row) {
     $total_sales_per_product[$product] += $row['total_sales'];
 }
 
-// เตรียมข้อมูลยอดขายสินค้าแยกตามปี
+// === เตรียมข้อมูลยอดขายสินค้าแยกตามปี ===
 $product_sales_by_year = [];
 foreach ($sales_data as $row) {
     $year = $row['year'];
@@ -77,15 +78,39 @@ foreach ($sales_data as $row) {
     if (!isset($product_sales_by_year[$year])) {
         $product_sales_by_year[$year] = [];
     }
-
     if (!isset($product_sales_by_year[$year][$product])) {
         $product_sales_by_year[$year][$product] = 0;
     }
-
     $product_sales_by_year[$year][$product] += $amount;
 }
 
-// สำหรับกราฟแท่งสินค้าเริ่มต้น (รวมทั้งหมด)
+// === เตรียมข้อมูลสำหรับกราฟเปรียบเทียบเดือนข้ามปี ===
+$monthly_sales_by_year = []; // [ปี][เดือน] = ยอดขายรวม
+foreach ($sales_data as $row) {
+    $year = (int)$row['year'];
+    $month = (int)$row['month'];
+    $amount = floatval($row['total_sales']);
+
+    if (!isset($monthly_sales_by_year[$year])) {
+        $monthly_sales_by_year[$year] = array_fill(1, 12, 0);
+    }
+    $monthly_sales_by_year[$year][$month] += $amount;
+}
+
+// === ข้อมูลสำหรับกราฟไตรมาสข้ามปี ===
+$quarterly_sales_by_year = []; // [ปี][ไตรมาส] = ยอดขายรวม
+foreach ($sales_data as $row) {
+    $year = (int)$row['year'];
+    $quarter = (int)$row['quarter'];
+    $amount = floatval($row['total_sales']);
+
+    if (!isset($quarterly_sales_by_year[$year])) {
+        $quarterly_sales_by_year[$year] = array_fill(1, 4, 0);
+    }
+    $quarterly_sales_by_year[$year][$quarter] += $amount;
+}
+
+// === กราฟแท่งสินค้าเริ่มต้น (รวมทั้งหมด) ===
 $product_labels = array_keys($total_sales_per_product);
 $product_sales = array_values($total_sales_per_product);
 
@@ -94,14 +119,14 @@ $stmt->close();
 
 <!-- ส่งข้อมูลไป JavaScript -->
 <script>
-    const quarterToMonth = <?= json_encode($quarter_to_month) ?>;
-    const labelsMonthly = <?= json_encode($labels_monthly) ?>;
-    const labelsQuarterly = <?= json_encode($labels_quarterly) ?>;
-    const labelsYearly = <?= json_encode($labels_yearly) ?>;
-    const salesDataFromPHP = <?= json_encode($sales_data) ?>;
-    const productSalesByYear = <?= json_encode($product_sales_by_year) ?>;
-    const productLabels = <?= json_encode($product_labels) ?>;
-    const productSales = <?= json_encode($product_sales) ?>;
+    const quarterToMonth = <?= json_encode($quarter_to_month, JSON_UNESCAPED_UNICODE) ?>;
+    const labelsMonthly = <?= json_encode(array_values($labels_monthly), JSON_UNESCAPED_UNICODE) ?>;
+    const labelsQuarterly = <?= json_encode(array_values($labels_quarterly), JSON_UNESCAPED_UNICODE) ?>;
+    const labelsYearly = <?= json_encode(array_values($labels_yearly), JSON_UNESCAPED_UNICODE) ?>;
+    const salesDataFromPHP = <?= json_encode($sales_data, JSON_UNESCAPED_UNICODE) ?>;
+    const productSalesByYear = <?= json_encode($product_sales_by_year, JSON_UNESCAPED_UNICODE) ?>;
+    const productLabels = <?= json_encode($product_labels, JSON_UNESCAPED_UNICODE) ?>;
+    const productSales = <?= json_encode($product_sales, JSON_UNESCAPED_UNICODE) ?>;
 </script>
 
 <!DOCTYPE html>
@@ -185,7 +210,6 @@ $stmt->close();
                             <select id="timePeriodSelect" class="form-select" style="width:auto;">
                                 <option value="monthly">รายเดือน</option>
                                 <option value="quarterly">รายไตรมาส</option>
-                                <option value="yearly">รายปี</option>
                             </select>
                         </div>
                         <button class="btn btn-sm btn-outline-primary" onclick="showFullScreenChart('salesChart')">
@@ -370,18 +394,37 @@ $stmt->close();
             }
         });
 
-        // ----------------- ฟังก์ชันอัปเดตกกราฟเส้น -----------------
+        function getColor(year) {
+            function randomVisibleColor() {
+                const r = Math.floor(Math.random() * 156) + 100; // 100-255
+                const g = Math.floor(Math.random() * 156) + 100;
+                const b = Math.floor(Math.random() * 156) + 100;
+                return `rgba(${r}, ${g}, ${b}, 1)`;
+            }
+
+            if (!getColor.colors) {
+                getColor.colors = {};
+            }
+
+            if (!getColor.colors[year]) {
+                getColor.colors[year] = randomVisibleColor();
+            }
+
+            return getColor.colors[year];
+        }
+
+    // ----------------- ฟังก์ชันอัปเดตกกราฟเส้น -----------------
         function updateLineChart() {
             const selectedYears = Array.from(document.querySelectorAll('input[name="years[]"]:checked')).map(el => el.value);
             const timePeriod = document.getElementById('timePeriodSelect').value;
 
             let labels = [];
             if (timePeriod === 'monthly') {
-                labels = labelsMonthly;
+                labels = labelsMonthly; // ['มกราคม', 'กุมภาพันธ์', ..., 'ธันวาคม']
             } else if (timePeriod === 'quarterly') {
-                labels = labelsQuarterly;
+                labels = labelsQuarterly; // ['ไตรมาส 1', 'ไตรมาส 2', ..., 'ไตรมาส 4']
             } else {
-                labels = labelsYearly;
+                labels = labelsYearly; // [2023, 2024, 2025, ...]
             }
 
             const datasets = selectedYears.map(year => {
@@ -391,17 +434,29 @@ $stmt->close();
                     if (item.year == year) {
                         let labelKey = '';
                         if (timePeriod === 'monthly') {
-                            labelKey = item.month + "/" + item.year;
+                            // monthIndex เป็นเลข 1-12
+                            const monthIndex = parseInt(item.month);
+                            if (monthIndex > 0 && monthIndex <= labels.length) {
+                                // ใส่ข้อมูลใน index ของเดือนนั้น (monthIndex - 1)
+                                if (data[monthIndex - 1] === null) data[monthIndex - 1] = 0;
+                                data[monthIndex - 1] += parseFloat(item.total_sales);
+                            }
                         } else if (timePeriod === 'quarterly') {
-                            labelKey = quarterToMonth[item.quarter] + " " + item.year;
+                            // labelKey = ไตรมาส เช่น 'ไตรมาส 1'
+                            labelKey = quarterToMonth[item.quarter];
+                            const index = labels.indexOf(labelKey);
+                            if (index !== -1) {
+                                if (data[index] === null) data[index] = 0;
+                                data[index] += parseFloat(item.total_sales);
+                            }
                         } else {
+                            // yearly (label คือปี)
                             labelKey = item.year;
-                        }
-
-                        const index = labels.indexOf(labelKey);
-                        if (index !== -1) {
-                            if (!data[index]) data[index] = 0;
-                            data[index] += parseFloat(item.total_sales);
+                            const index = labels.indexOf(labelKey);
+                            if (index !== -1) {
+                                if (data[index] === null) data[index] = 0;
+                                data[index] += parseFloat(item.total_sales);
+                            }
                         }
                     }
                 });
@@ -409,8 +464,8 @@ $stmt->close();
                 return {
                     label: `ยอดขายปี ${year}`,
                     data: data,
-                    borderColor: 'rgba(75, 192, 192, 1)',
-                    backgroundColor: 'rgba(75, 192, 192, 0.2)',
+                    borderColor: getColor(year),
+                    backgroundColor: getColor(year).replace('1)', '0.2)'),
                     borderWidth: 2,
                     tension: 0.3,
                     fill: false
@@ -421,7 +476,6 @@ $stmt->close();
             salesChart.data.datasets = datasets;
             salesChart.update();
         }
-
         // ----------------- ฟังก์ชันอัปเดตกกราฟสินค้า -----------------
         function updateProductChart() {
             const selectedYears = Array.from(document.querySelectorAll('input[name="years[]"]:checked')).map(el => el.value);

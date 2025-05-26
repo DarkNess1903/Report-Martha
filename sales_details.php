@@ -8,6 +8,7 @@ if (!isset($_SESSION['user_id']) || $_SESSION['role'] != 'admin') {
     exit();
 }
 
+$user_id = intval($_GET['user_id']);
 $selected_year = isset($_GET['year']) ? intval($_GET['year']) : date("Y");
 
 $monthNames = [
@@ -101,6 +102,15 @@ $sales_data = [];
 while ($row = $result->fetch_assoc()) {
     $sales_data[] = $row;
 }
+
+// ดึงชื่อพนักงาน
+$stmt = $conn->prepare("SELECT username FROM users WHERE id = ?");
+$stmt->bind_param("i", $user_id);
+$stmt->execute();
+$stmt->bind_result($employee_name);
+$stmt->fetch();
+$stmt->close();
+
 ?>
 
 <!DOCTYPE html>
@@ -164,7 +174,7 @@ while ($row = $result->fetch_assoc()) {
         <!-- ตารางข้อมูลยอดขาย -->
     <div class="card shadow-sm">
         <div class="card-header d-flex justify-content-between align-items-center">
-            <h5 class="mb-0">ข้อมูลยอดขาย</h5>
+            <h5 class="mb-0">ข้อมูลยอดขายของพนักงาน: <?= htmlspecialchars($employee_name) ?></h5>
             <button type="button" class="btn btn-success btn-sm" data-bs-toggle="modal" data-bs-target="#addSaleModal">
                 เพิ่มข้อมูล
             </button>
@@ -283,13 +293,6 @@ while ($row = $result->fetch_assoc()) {
         </div>
     </div>
 <!-- </div> -->
-
-    <script>
-        function updateTimePeriod() {
-            let timePeriod = document.getElementById("timePeriodSelect").value;
-            window.location.href = "sales_details.php?user_id=<?= $user_id ?>&timePeriod=" + timePeriod;
-        }
-    </script>
 </body>
 
 <!-- Modal เพิ่มข้อมูลยอดขาย -->
@@ -368,7 +371,6 @@ while ($row = $result->fetch_assoc()) {
             <select id="timePeriodSelect" class="form-select w-auto" onchange="updateTimePeriod()">
                 <option value="monthly" <?= ($timePeriod == 'monthly') ? 'selected' : '' ?>>รายเดือน</option>
                 <option value="quarterly" <?= ($timePeriod == 'quarterly') ? 'selected' : '' ?>>รายไตรมาส</option>
-                <option value="yearly" <?= ($timePeriod == 'yearly') ? 'selected' : '' ?>>รายปี</option>
             </select>
         </div>
     </div>
@@ -421,7 +423,8 @@ while ($row = $result->fetch_assoc()) {
 <script>
     function updateTimePeriod() {
         let timePeriod = document.getElementById("timePeriodSelect").value;
-        window.location.href = "sales_details.php?user_id=<?= $user_id ?>&timePeriod=" + timePeriod;
+        let year = <?= $selected_year ?>;
+        window.location.href = "sales_details.php?user_id=<?= $user_id ?>&timePeriod=" + timePeriod + "&year=" + year;
     }
 
     let salesData = <?= json_encode($sales_data) ?>;
