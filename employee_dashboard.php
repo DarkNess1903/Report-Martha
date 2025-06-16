@@ -110,6 +110,17 @@ foreach ($sales_data as $row) {
     $quarterly_sales_by_year[$year][$quarter] += $amount;
 }
 
+// === สรุปยอดรวมทั้งปี ===
+$total_sales_by_year = [];
+foreach ($sales_data as $row) {
+    $year = $row['year'];
+    $amount = floatval($row['total_sales']);
+    if (!isset($total_sales_by_year[$year])) {
+        $total_sales_by_year[$year] = 0;
+    }
+    $total_sales_by_year[$year] += $amount;
+}
+
 // === กราฟแท่งสินค้าเริ่มต้น (รวมทั้งหมด) ===
 $product_labels = array_keys($total_sales_per_product);
 $product_sales = array_values($total_sales_per_product);
@@ -191,18 +202,21 @@ $stmt->close();
                         <?php
                         // กำหนดรายการปีที่มีข้อมูล
                         $unique_years = array_unique(array_column($sales_data, 'year')); 
-                        foreach ($unique_years as $year): ?>
+                        sort($unique_years); // เพื่อให้เรียงปีจากน้อยไปมาก
+                        foreach ($unique_years as $year): 
+                            $total = number_format($total_sales_by_year[$year], 2); // แสดงยอดขายรวมแบบมี comma
+                        ?>
                             <div class="form-check form-check-inline me-3">
                                 <input class="form-check-input" type="checkbox" name="years[]" value="<?= $year ?>" checked>
-                                <label class="form-check-label"><?= $year ?></label>
+                                <label class="form-check-label"><?= $year ?> (<?= $total ?> บาท)</label>
                             </div>
                         <?php endforeach; ?>
                     </div>
                 </div>
 
-            <!-- ส่วนแสดงกราฟและปุ่มขยาย -->
+            <!-- แถวที่ 1: กราฟยอดขายตามช่วงเวลา -->
             <div class="row">
-                <div class="col-md-6 mb-4 chart-container">
+                <div class="col-12 mb-4 chart-container">
                     <!-- แถวเลือกช่วงเวลา + ปุ่มขยาย -->
                     <div class="d-flex justify-content-between align-items-center mb-2">
                         <div class="d-flex align-items-center">
@@ -217,23 +231,26 @@ $stmt->close();
                         </button>
                     </div>
 
-                    <!-- กราฟยอดขาย -->
+                    <!-- กราฟยอดขายตามช่วงเวลา -->
                     <canvas id="salesChart" width="400" height="200"></canvas>
                 </div>
+            </div>
 
-                <div class="col-md-6 mb-4 chart-container">
-                    <div class="d-flex justify-content-end mb-2">
-                        <button class="btn btn-sm btn-outline-primary" onclick="showFullScreenChart('productSalesChart')">
-                            <i class="fas fa-expand"></i> ขยาย
-                        </button>
-                    </div>
-                    <!-- กราฟยอดขายสินค้า -->
-                    <div style="width: 600px; max-width: 100%; margin: auto;">
-                        <canvas id="productSalesChart"></canvas>
+            <!-- แถวที่ 2: กราฟยอดขายสินค้า -->
+            <div class="row">
+                <div class="col-12 mb-4 chart-container">
+                        <div class="d-flex justify-content-end">
+                            <button class="btn btn-sm btn-outline-primary" onclick="showFullScreenChart('productSalesChart')">
+                                <i class="fas fa-expand"></i> ขยาย
+                            </button>
+                        </div>
+                        <!-- กราฟยอดขายสินค้า -->
+                        <div style=" margin: auto;">
+                            <canvas id="productSalesChart"></canvas>
+                        </div>
                     </div>
                 </div>
-            </div>
-                                
+                        
             <!-- ขยายเต็มจอ -->
             <div class="modal fade" id="chartModal" tabindex="-1" aria-labelledby="chartModalLabel" aria-hidden="true">
                 <div class="modal-dialog modal-xl"> <!-- เปลี่ยนขนาดจาก fullscreen เป็น xl -->
@@ -270,7 +287,7 @@ $stmt->close();
             ?>
 
             <!-- ตารางยอดขาย --> 
-            <div class="card shadow-sm">
+            <!-- <div class="card shadow-sm">
                 <div class="card-body">
                     <div class="table-responsive">
                         <table id="tabledata" class="table table-striped table-bordered">
@@ -308,7 +325,7 @@ $stmt->close();
         <?php else: ?>
             <p>ยังไม่มีข้อมูลยอดขายของคุณในปีและไตรมาสนี้</p>
         <?php endif; ?>
-    </div>
+    </div> -->
 
     <script src="js/bootstrap.bundle.min.js"></script>
 
@@ -323,6 +340,8 @@ $stmt->close();
         const labelsYearly = <?= json_encode($labels_yearly) ?>;
         const salesDataFromPHP = <?= json_encode($sales_data) ?>;
         const productSalesByYear = <?= json_encode($product_sales_by_year) ?>;
+        const productLabels = <?= json_encode($product_labels) ?>;
+        const productSales = <?= json_encode($product_sales) ?>;
 
         // ----------------- กราฟเส้นยอดขาย -----------------
         const salesChart = new Chart(ctxLine, {
@@ -357,16 +376,31 @@ $stmt->close();
             }
         });
 
-        // ----------------- กราฟแท่งยอดขายสินค้า -----------------
-        const productSalesChart = new Chart(ctxBar, {
+        // ฟังก์ชันสร้างสี RGBA แบบสุ่ม
+        function generateRandomColors(count, opacity = 0.6) {
+            const colors = [];
+            for (let i = 0; i < count; i++) {
+                const r = Math.floor(Math.random() * 255);
+                const g = Math.floor(Math.random() * 255);
+                const b = Math.floor(Math.random() * 255);
+                colors.push(`rgba(${r}, ${g}, ${b}, ${opacity})`);
+            }
+            return colors;
+        }
+
+        const barColors = generateRandomColors(productLabels.length);
+        const barBorderColors = barColors.map(c => c.replace(/0\.6/, '1'));
+
+       // ----------------- กราฟแท่งยอดขายสินค้า -----------------
+       const productSalesChart = new Chart(ctxBar, {
             type: 'bar',
             data: {
-                labels: [],
+                labels: productLabels,
                 datasets: [{
                     label: 'ยอดขายสินค้า (รวม)',
-                    data: [],
-                    backgroundColor: 'rgba(54, 162, 235, 0.6)',
-                    borderColor: 'rgba(54, 162, 235, 1)',
+                    data: productSales,
+                    backgroundColor: barColors,
+                    borderColor: barBorderColors,
                     borderWidth: 1
                 }]
             },
@@ -377,7 +411,7 @@ $stmt->close();
                         beginAtZero: true,
                         title: {
                             display: true,
-                            text: 'ยอดขาย (จำนวนเงิน)'
+                            text: 'ยอดขาย (บาท)'
                         }
                     },
                     x: {

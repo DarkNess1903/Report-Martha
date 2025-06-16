@@ -86,34 +86,39 @@ $quarter_to_month = [
 
         <!-- ยอดขายรวมทั้งหมด -->
         <div class="mb-4 d-flex justify-content-between align-items-center">
-            <h3 class="mb-0">ยอดขายรวมทั้งหมด:</h3>
+            <h4 class="mb-0">ยอดขายรวมทั้งหมด:</h4>
             <span><?= number_format($total_sales_result->fetch_assoc()['total_sales'], 2) ?> บาท</span>
         </div>
-
         
         <!-- ตารางยอดขายตามปี -->
-        <div class="table table-responsive">
-            <table id= "tabledata" class="table table-striped table-boredered">
+        <div class="table-responsive">
+            <table id="tabledata" class="table table-striped table-bordered">
                 <thead style="font-size: small;">
-                <tr>
-                    <th>ปี</th>
-                    <th>ยอดขายรวม (บาท)</th>
-                </tr>
-            </thead>
-            <tbody>
-                <?php if ($yearly_sales_result->num_rows > 0): ?>
-                    <?php while ($row = $yearly_sales_result->fetch_assoc()): ?>
-                        <tr>
-                            <td><?= htmlspecialchars($row['year']) ?></td>
-                            <td><?= number_format($row['total_sales'], 2) ?></td>
-                        </tr>
-                    <?php endwhile; ?>
-                <?php else: ?>
                     <tr>
-                        <td colspan="3" class="text-center">ไม่มีข้อมูลยอดขาย</td>
+                        <th>ปี</th>
+                        <th>ยอดขายรวม (บาท)</th>
+                        <th>ดูข้อมูล</th>
                     </tr>
-                <?php endif; ?>
-            </tbody>
+                </thead>
+                <tbody>
+                    <?php if ($yearly_sales_result->num_rows > 0): ?>
+                        <?php while ($row = $yearly_sales_result->fetch_assoc()): ?>
+                            <tr>
+                                <td><?= htmlspecialchars($row['year']) ?></td>
+                                <td><?= number_format($row['total_sales'], 2) ?> บาท</td>
+                                <td>
+                                    <a href="sales_details_by_year.php?year=<?= $row['year'] ?>" class="btn btn-sm btn-info">
+                                        ดูข้อมูล
+                                    </a>
+                                </td>
+                            </tr>
+                        <?php endwhile; ?>
+                    <?php else: ?>
+                        <tr>
+                            <td colspan="3" class="text-center">ไม่มีข้อมูลยอดขาย</td>
+                        </tr>
+                    <?php endif; ?>
+                </tbody>
             </table>
         </div>
             </div>
