@@ -1,0 +1,14 @@
+{
+    "name": "benchaphon/report-martha",
+    "description": "????????????????",
+    "license": "MIT",
+    "autoload": {
+        "psr-4": {
+            "Benchaphon\\ReportMartha\\": "src/"
+        }
+    },
+    "authors": [],
+    "require": {
+        "phpoffice/phpspreadsheet": "^4.4"
+    }
+}

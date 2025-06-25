@@ -188,13 +188,19 @@ $stmt_total->close();
     
     <div class="container mt-5">
 
-        <!-- ตารางข้อมูลยอดขาย -->
+    <!-- ตารางข้อมูลยอดขาย -->
     <div class="card shadow-sm">
         <div class="card-header d-flex justify-content-between align-items-center">
             <h5 class="mb-0">ข้อมูลยอดขายของพนักงาน: <?= htmlspecialchars($employee_name) ?></h5>
-            <button type="button" class="btn btn-success btn-sm" data-bs-toggle="modal" data-bs-target="#addSaleModal">
-                เพิ่มข้อมูล
-            </button>
+            <div>
+                <button type="button" class="btn btn-success btn-sm me-2" data-bs-toggle="modal" data-bs-target="#addSaleModal">
+                    เพิ่มข้อมูล
+                </button>
+                <!-- ปุ่มเปิด modal สำหรับอัปโหลด Excel -->
+                <button type="button" class="btn btn-primary btn-sm" data-bs-toggle="modal" data-bs-target="#uploadExcelModal">
+                    นำเข้า Excel
+                </button>
+            </div>
         </div>
             <div class="card-body">
             <table id= "tabledata" class="table table-striped table-boredered">
@@ -442,8 +448,37 @@ $stmt_total->close();
         </div>
     </div>
 
-
+    <!-- Modal: อัปโหลดไฟล์ Excel -->
+    <div class="modal fade" id="uploadExcelModal" tabindex="-1" aria-labelledby="uploadExcelModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <form action="import_excel.php" method="POST" enctype="multipart/form-data" class="modal-content">
+        <input type="hidden" name="user_id" value="<?= $user_id ?>">
+        <input type="hidden" name="year" value="<?= $selected_year ?>">
+        <div class="modal-header">
+            <h5 class="modal-title" id="uploadExcelModalLabel">นำเข้าไฟล์ Excel (.xlsx)</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="ปิด"></button>
+        </div>
+        <div class="modal-body">
+            <div class="mb-3">
+            <label for="excelFile" class="form-label">เลือกไฟล์ Excel</label>
+            <input class="form-control" type="file" id="excelFile" name="excel_file" accept=".xlsx" required>
+            <small class="text-muted">รูปแบบไฟล์ต้องมีคอลัมน์: เดือน, ไตรมาส, สินค้า, ยอดขาย</small>
+            </div>
+        </div>
+        <div class="modal-footer">
+            <button type="submit" class="btn btn-primary">นำเข้า</button>
+            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">ยกเลิก</button>
+        </div>
+        </form>
+    </div>
+    </div>
     
+    <?php if (isset($_GET['imported'])): ?>
+    <div class="alert alert-success mt-3">
+        นำเข้าข้อมูลยอดขายสำเร็จจำนวน <?= intval($_GET['imported']) ?> รายการ
+    </div>
+<?php endif; ?>
+
 <script>
     function updateTimePeriod() {
         let timePeriod = document.getElementById("timePeriodSelect").value;
