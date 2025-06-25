@@ -331,6 +331,18 @@ $conn->close();
     });
 
     // กราฟยอดขายพนักงานแต่ละคน
+        // ฟังก์ชันสุ่มสีโทนสบายตา (pastel colors)
+    function getRandomPastelColor() {
+        const hue = Math.floor(Math.random() * 360); // ค่า hue แบบสุ่ม 0-359
+        const saturation = 70;  // ความอิ่มตัวสีประมาณ 70%
+        const lightness = 70;   // ความสว่างประมาณ 70% ให้เป็นโทนสบายตา
+        return `hsl(${hue}, ${saturation}%, ${lightness}%)`;
+    }
+
+    // สร้าง array สีสำหรับพนักงานแต่ละคน
+    const employeeColors = <?= json_encode($employee_labels) ?>.map(() => getRandomPastelColor());
+
+    // สร้างกราฟแท่ง
     const employeeSalesCtx = document.getElementById('employeeSalesChart').getContext('2d');
     const employeeSalesChart = new Chart(employeeSalesCtx, {
         type: 'bar',
@@ -339,8 +351,8 @@ $conn->close();
             datasets: [{
                 label: 'ยอดขายรวม (บาท)',
                 data: <?= json_encode($employee_sales) ?>,
-                backgroundColor: 'rgba(54, 162, 235, 0.7)',
-                borderColor: 'rgba(54, 162, 235, 1)',
+                backgroundColor: employeeColors.map(c => c.replace('hsl', 'hsla').replace(')', ', 0.7)')),  // สีโปร่งแสง
+                borderColor: employeeColors.map(c => c.replace('hsl', 'hsla').replace(')', ', 1)')),     // สีขอบชัด
                 borderWidth: 1
             }]
         },

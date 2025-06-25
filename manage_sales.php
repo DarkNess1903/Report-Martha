@@ -113,30 +113,32 @@ $result = $conn->query($sql);
          </div>
              </div>
     </div>
+    </br></br>
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.0.2/dist/js/bootstrap.bundle.min.js" integrity="sha384-MrcW6ZMFYlzcLA8Nl+NtUVF0sA7MsXsP1UyJoMp4YLEuNSfAP+JcXn/tWtIaxVXM" crossorigin="anonymous"></script>
 <script src="https://code.jquery.com/jquery-3.7.0.min.js"></script>
 <script src="//cdn.datatables.net/1.13.4/js/jquery.dataTables.min.js"></script>
+
 <script type="text/javascript" charset="utf-8">
-      $(document).ready(function() {
-      $('#tabledata').dataTable( {
-      "oLanguage": {
-      "sLengthMenu": "แสดง MENU ข้อมูล",
-      "sZeroRecords": "ไม่พบข้อมูล",
-      "sInfo": "แสดง START ถึง END ของ TOTAL ข้อมูล",
-      "sInfoEmpty": "แสดง 0 ถึง 0 ของ 0 ข้อมูล",
-      "sInfoFiltered": "(จากข้อมูลทั้งหมด MAX ข้อมูล)",
-      "sSearch": "ค้นหา :",
-      "aaSorting" :[[0,'desc']],
-      "oPaginate": {
-      "sFirst":    "หน้าแรก",
-      "sPrevious": "ก่อนหน้า",
-      "sNext":     "ถัดไป",
-      "sLast":     "หน้าสุดท้าย"
-      },
-      }
-      } );
-      } );
+        $(document).ready(function() {
+        $('#tabledata').dataTable( {
+        "oLanguage": {
+        "sLengthMenu": "แสดง _MENU_ ข้อมูล",
+        "sZeroRecords": "ไม่พบข้อมูล",
+        "sInfo": "แสดง _START_ ถึง _END_ ของ _TOTAL_ ข้อมูล",
+        "sInfoEmpty": "แสดง 0 ถึง 0 ของ 0 ข้อมูล",
+        "sInfoFiltered": "(จากข้อมูลทั้งหมด _MAX_ ข้อมูล)",
+        "sSearch": "ค้นหา :",
+        "aaSorting" :[[0,'desc']],
+        "oPaginate": {
+        "sFirst":    "หน้าแรก",
+        "sPrevious": "ก่อนหน้า",
+        "sNext":     "ถัดไป",
+        "sLast":     "หน้าสุดท้าย"
+        },
+        }
+        } );
+        } );
 </script>
 
 </body>

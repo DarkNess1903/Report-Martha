@@ -111,6 +111,23 @@ $stmt->bind_result($employee_name);
 $stmt->fetch();
 $stmt->close();
 
+
+// รับ user_id และ year จาก query string
+$user_id = isset($_GET['user_id']) ? intval($_GET['user_id']) : 0;
+$selected_year = isset($_GET['year']) ? intval($_GET['year']) : date("Y");
+
+// ดึงยอดขายรวมของพนักงานในปีนั้น
+$sql_total = "SELECT SUM(amount) AS total_sales 
+              FROM sales 
+              WHERE user_id = ? AND year = ?";
+$stmt_total = $conn->prepare($sql_total);
+$stmt_total->bind_param("ii", $user_id, $selected_year);
+$stmt_total->execute();
+$total_result = $stmt_total->get_result();
+$total_row = $total_result->fetch_assoc();
+$total_sales = $total_row['total_sales'] ?? 0;
+$stmt_total->close();
+
 ?>
 
 <!DOCTYPE html>
@@ -376,6 +393,13 @@ $stmt->close();
     </div>
 
     <div class="row">
+    <!-- ✅ แสดงยอดขายรวม -->
+    <div class="col-md-12 mb-3">
+        <div class="alert alert-info text-center fw-bold fs-5">
+            ยอดขายรวมทั้งหมดในปี <?= $selected_year ?>: <?= number_format($total_sales, 2) ?> บาท
+        </div>
+    </div>
+
     <!-- กราฟยอดขายสินค้า -->
     <div class="col-md-6 mb-4">
         <div class="card shadow-sm p-3 h-100 position-relative">
@@ -470,24 +494,74 @@ function processSalesData(salesData, timePeriod) {
 let timePeriod = "<?= $timePeriod ?>";
 let processedData = processSalesData(salesData, timePeriod);
 
+const productLabels = Object.keys(processedData.productSales);
+const productData = Object.values(processedData.productSales).map(obj =>
+    Object.values(obj).reduce((a, b) => a + b, 0)
+);
+
+// สีพาสเทลสวยงาม (สำหรับ background)
+const pastelColors = [
+    'rgba(255, 99, 132, 0.6)',   // แดงอมชมพู
+    'rgba(255, 159, 64, 0.6)',   // ส้ม
+    'rgba(255, 205, 86, 0.6)',   // เหลือง
+    'rgba(75, 192, 192, 0.6)',   // เขียวมิ้นต์
+    'rgba(54, 162, 235, 0.6)',   // ฟ้า
+    'rgba(153, 102, 255, 0.6)',  // ม่วงอ่อน
+    'rgba(201, 203, 207, 0.6)'   // เทา
+];
+
+// สีเข้มสำหรับขอบ
+const pastelBorders = [
+    'rgba(255, 99, 132, 1)',
+    'rgba(255, 159, 64, 1)',
+    'rgba(255, 205, 86, 1)',
+    'rgba(75, 192, 192, 1)',
+    'rgba(54, 162, 235, 1)',
+    'rgba(153, 102, 255, 1)',
+    'rgba(201, 203, 207, 1)'
+];
+
+// ถ้าสินค้ามีมากกว่า 7 ชนิด ให้ทำสีวนซ้ำ
+const backgroundColors = productLabels.map((_, i) => pastelColors[i % pastelColors.length]);
+const borderColors = productLabels.map((_, i) => pastelBorders[i % pastelBorders.length]);
+
 // 🔵 กราฟแท่ง: ยอดขายสินค้าแต่ละตัว
 new Chart(document.getElementById("salesChart"), {
     type: "bar",
     data: {
-        labels: Object.keys(processedData.productSales),
+        labels: productLabels,
         datasets: [{
             label: "ยอดขายสินค้า",
-            data: Object.values(processedData.productSales).map(obj => Object.values(obj).reduce((a, b) => a + b, 0)),
-            backgroundColor: "rgba(54, 162, 235, 0.6)",
-            borderColor: "rgba(54, 162, 235, 1)",
+            data: productData,
+            backgroundColor: backgroundColors,
+            borderColor: borderColors,
             borderWidth: 1
         }]
     },
     options: {
         responsive: true,
-        maintainAspectRatio: true
+        maintainAspectRatio: true,
+        plugins: {
+            legend: {
+                display: false // ไม่แสดง legend ถ้ามีเพียงชุดข้อมูลเดียว
+            },
+            tooltip: {
+                callbacks: {
+                    label: context => ` ${context.dataset.label}: ${context.raw.toLocaleString()} บาท`
+                }
+            }
+        },
+        scales: {
+            y: {
+                beginAtZero: true,
+                ticks: {
+                    callback: value => value.toLocaleString() + ' บาท'
+                }
+            }
+        }
     }
 });
+
 
 // 🟢 กราฟเส้น: ยอดขายรวมทุกช่วงเวลา
 new Chart(document.getElementById("totalSalesChart"), {
@@ -553,11 +627,11 @@ new Chart(document.getElementById("totalSalesChart"), {
         $(document).ready(function() {
         $('#tabledata').dataTable( {
         "oLanguage": {
-        "sLengthMenu": "แสดง MENU ข้อมูล",
+        "sLengthMenu": "แสดง _MENU_ ข้อมูล",
         "sZeroRecords": "ไม่พบข้อมูล",
-        "sInfo": "แสดง START ถึง END ของ TOTAL ข้อมูล",
+        "sInfo": "แสดง _START_ ถึง _END_ ของ _TOTAL_ ข้อมูล",
         "sInfoEmpty": "แสดง 0 ถึง 0 ของ 0 ข้อมูล",
-        "sInfoFiltered": "(จากข้อมูลทั้งหมด MAX ข้อมูล)",
+        "sInfoFiltered": "(จากข้อมูลทั้งหมด _MAX_ ข้อมูล)",
         "sSearch": "ค้นหา :",
         "aaSorting" :[[0,'desc']],
         "oPaginate": {
