@@ -230,22 +230,21 @@ $conn->close();
 
         <!-- Modal สำหรับแสดงกราฟเต็มจอ -->
         <div class="modal fade" id="chartModal" tabindex="-1" aria-labelledby="chartModalLabel" aria-hidden="true">
-            <div class="modal-dialog modal-xl">
+            <div class="modal-dialog modal-xl modal-dialog-centered modal-fullscreen-sm-down">
                 <div class="modal-content bg-white">
                     <div class="modal-header">
                         <h5 class="modal-title fw-bold fs-4" id="chartModalLabel">กราฟแบบขยาย</h5>
                         <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="ปิด"></button>
                     </div>
-                    <div class="modal-body">
-                        <div class="w-100" style="height:500px;">
+                    <div class="modal-body p-0">
+                        <div class="w-100" style="height: 80vh; min-height: 300px;">
                             <canvas id="fullScreenChart" style="width:100%; height:100%;"></canvas>
                         </div>
                     </div>
                 </div>
             </div>
         </div>
-    </div>
-    
+
 <script>
     // แปลงข้อมูลจาก PHP มาเป็น JavaScript object
     const monthlyData = <?= json_encode($monthly_data) ?>;
@@ -480,7 +479,6 @@ $conn->close();
             fullScreenChartInstance.resize();
         }
     });
-
 </script>
 
 <!-- เชื่อมต่อกับ Bootstrap JS -->

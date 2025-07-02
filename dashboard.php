@@ -319,8 +319,13 @@ $conn->close();
         <div class="row">
             <!-- ขายดี -->
             <div class="col-12 col-lg-6 mb-4">
-                <div class="card shadow-sm h-100">
-                    <div class="card-body">
+                <div class="card shadow-sm h-100 position-relative">
+                    <!-- ปุ่มขยายบนมุมขวาบน -->
+                    <button type="button" class="btn btn-sm btn-outline-primary position-absolute" style="top: 10px; right: 10px; z-index: 10;"
+                        onclick="showFullScreenChart('topProductsChart')">
+                        <i class="fas fa-expand"></i> ขยาย
+                    </button>
+                    <div class="card-body pt-4">
                         <h5 class="text-center">สินค้าขายดี 5 อันดับ (รวมทุกปี)</h5>
                         <canvas id="topProductsChart" height="200"></canvas>
                     </div>
@@ -329,8 +334,13 @@ $conn->close();
 
             <!-- ขายไม่ดี -->
             <div class="col-12 col-lg-6 mb-4">
-                <div class="card shadow-sm h-100">
-                    <div class="card-body">
+                <div class="card shadow-sm h-100 position-relative">
+                    <!-- ปุ่มขยายบนมุมขวาบน -->
+                    <button type="button" class="btn btn-sm btn-outline-primary position-absolute" style="top: 10px; right: 10px; z-index: 10;"
+                        onclick="showFullScreenChart('worstProductsChart')">
+                        <i class="fas fa-expand"></i> ขยาย
+                    </button>
+                    <div class="card-body pt-4">
                         <h5 class="text-center">สินค้าขายไม่ดี 5 อันดับ (รวมทุกปี)</h5>
                         <canvas id="worstProductsChart" height="200"></canvas>
                     </div>
@@ -341,7 +351,12 @@ $conn->close();
         <!-- กราฟยอดขายย้อนหลัง -->
         <div class="row">
             <div class="col-12">
-                <div class="card shadow-sm p-4 mb-5">
+                <div class="card shadow-sm p-4 mb-5 position-relative">
+                    <!-- ปุ่มขยายบนมุมขวาบน -->
+                    <button type="button" class="btn btn-sm btn-outline-primary position-absolute" style="top: 10px; right: 10px; z-index: 10;"
+                        onclick="showFullScreenChart('salesTrendChart')">
+                        <i class="fas fa-expand"></i> ขยาย
+                    </button>
                     <h5 class="text-center mb-3">ยอดขายย้อนหลัง 5 ปี (รายเดือน)</h5>
                     <div class="chart-container" style="position: relative; height:350px; max-height: 450px;">
                         <canvas id="salesTrendChart"></canvas>
@@ -349,7 +364,23 @@ $conn->close();
                 </div>
             </div>
         </div>
-    </div>
+
+           <!-- Modal สำหรับแสดงกราฟเต็มจอ -->
+        <div class="modal fade" id="chartModal" tabindex="-1" aria-labelledby="chartModalLabel" aria-hidden="true">
+            <div class="modal-dialog modal-xl modal-dialog-centered modal-fullscreen-sm-down">
+                <div class="modal-content bg-white">
+                    <div class="modal-header">
+                        <h5 class="modal-title fw-bold fs-4" id="chartModalLabel">กราฟแบบขยาย</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="ปิด"></button>
+                    </div>
+                    <div class="modal-body p-0">
+                        <div class="w-100" style="height: 80vh; min-height: 300px;">
+                            <canvas id="fullScreenChart" style="width:100%; height:100%;"></canvas>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
 </body>
 
 <script>
@@ -497,6 +528,71 @@ $conn->close();
             }]
         },
         options: barOptions
+    });
+
+    
+    let fullScreenChartInstance;
+
+    function showFullScreenChart(originalChartId) {
+        const originalChart = Chart.getChart(originalChartId);
+        if (!originalChart) return;
+
+        if (fullScreenChartInstance) {
+            fullScreenChartInstance.destroy();
+        }
+
+        const ctx = document.getElementById('fullScreenChart').getContext('2d');
+
+        fullScreenChartInstance = new Chart(ctx, {
+            type: originalChart.config.type,
+            data: JSON.parse(JSON.stringify(originalChart.data)),
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        labels: {
+                            font: {
+                                size: 16 // เพิ่มขนาดตัวอักษรของ legend
+                            }
+                        }
+                    },
+                    title: {
+                        display: true,
+                        text: originalChart.options.plugins?.title?.text || 'กราฟ',
+                        font: {
+                            size: 20 // ขนาดหัวข้อกราฟ
+                        }
+                    }
+                },
+                scales: {
+                    x: {
+                        ticks: {
+                            font: {
+                                size: 14 // แกน X
+                            }
+                        }
+                    },
+                    y: {
+                        ticks: {
+                            font: {
+                                size: 14 // แกน Y
+                            }
+                        }
+                    }
+                }
+            }
+        });
+
+        const modal = new bootstrap.Modal(document.getElementById('chartModal'));
+        modal.show();
+    }
+
+
+    document.getElementById('chartModal').addEventListener('shown.bs.modal', () => {
+        if (fullScreenChartInstance) {
+            fullScreenChartInstance.resize();
+        }
     });
 </script>
 

@@ -97,104 +97,112 @@ $result = $conn->query($sql);
     <?php include 'topnavbar.php' ?> <!-- เรียกใช้ topnavbar.php ในหน้าอื่นๆ -->
     <div class="container mt-5">
         <h2>จัดการข้อมูลพนักงาน</h2><br>
-        <div class="col-md-12">
-            <div class="card shadow-sm">
-                 <div class="card-body"><br>
+        <div class="row">
+            <div class="col-12">
+                <div class="card shadow-sm">
+                    <div class="card-body">
+                        <br>
 
-        <!-- ข้อความแจ้งเตือนหากมีการเพิ่มหรือลบพนักงาน -->
-        <?php if (isset($success_message)): ?>
-            <div class="alert alert-success">
-                <?= htmlspecialchars($success_message) ?>
-            </div>
-        <?php elseif (isset($error_message)): ?>
-            <div class="alert alert-danger">
-                <?= htmlspecialchars($error_message) ?>
-            </div>
-        <?php endif; ?>
-
-        <!-- ปุ่มเพิ่มพนักงาน -->
-        <button class="btn btn-success" data-bs-toggle="modal" data-bs-target="#addUserModal">
-            <i class="fas fa-user-plus"></i> เพิ่มพนักงาน
-        </button>
-
-        <!-- Modal ฟอร์มเพิ่มพนักงาน -->
-        <div class="modal fade" id="addUserModal" tabindex="-1" aria-labelledby="addUserModalLabel" aria-hidden="true">
-            <div class="modal-dialog">
-                <div class="modal-content">
-                    <div class="modal-header">
-                        <h5 class="modal-title" id="addUserModalLabel">เพิ่มพนักงานใหม่</h5>
-                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-                    </div>
-                    <div class="modal-body">
-                        <form action="manage_users.php" method="POST">
-                            <div class="mb-3">
-                                <label for="username" class="form-label">ชื่อผู้ใช้</label>
-                                <input type="text" class="form-control" name="username" required>
+                        <!-- ข้อความแจ้งเตือน -->
+                        <?php if (isset($success_message)): ?>
+                            <div class="alert alert-success">
+                                <?= htmlspecialchars($success_message) ?>
                             </div>
-                            <div class="mb-3">
-                                <label for="password" class="form-label">รหัสผ่าน</label>
-                                <input type="password" class="form-control" name="password" required>
+                        <?php elseif (isset($error_message)): ?>
+                            <div class="alert alert-danger">
+                                <?= htmlspecialchars($error_message) ?>
                             </div>
-                            <button type="submit" name="add_user" class="btn btn-primary">เพิ่มพนักงาน</button>
-                        </form>
-                    </div>
-                </div>
-            </div>
-        </div>
-        <hr>
+                        <?php endif; ?>
 
-        <!-- ตารางแสดงข้อมูลพนักงาน -->
-        <div class="table table-responsive">
-            <table id= "tabledata" class="table table-striped table-boredered">
-                <thead style="font-size: small;">
-                <tr>
-                    <th>ลำดับ</th>
-                    <th>ชื่อผู้ใช้</th>
-                    <th>เวลาที่สร้าง</th>
-                    <th>จัดการ</th>
-                </tr>
-            </thead>
-            <tbody>
-                <?php while ($row = $result->fetch_assoc()): ?>
-                    <tr>
-                        <td><?= $row['id'] ?></td>
-                        <td><?= htmlspecialchars($row['username']) ?></td>
-                        <td><?= date('d-m-Y H:i:s', strtotime($row['created_at'])) ?></td>
-                        <td>
-                            <!-- ปุ่มแก้ไข -->
-                            <button class="btn btn-warning" data-bs-toggle="modal" data-bs-target="#editUserModal<?= $row['id'] ?>">
-                                <i class="fas fa-edit"></i> แก้ไข
-                            </button>
+                        <!-- ปุ่มเพิ่มพนักงาน -->
+                        <button class="btn btn-success mb-3" data-bs-toggle="modal" data-bs-target="#addUserModal">
+                            <i class="fas fa-user-plus"></i> เพิ่มพนักงาน
+                        </button>
 
-                            <!-- Modal ฟอร์มแก้ไขพนักงาน -->
-                            <div class="modal fade" id="editUserModal<?= $row['id'] ?>" tabindex="-1" aria-labelledby="editUserModalLabel" aria-hidden="true">
-                                <div class="modal-dialog">
-                                    <div class="modal-content">
-                                        <div class="modal-header">
-                                            <h5 class="modal-title" id="editUserModalLabel">แก้ไขข้อมูลพนักงาน</h5>
-                                            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-                                        </div>
-                                        <div class="modal-body">
-                                            <form action="manage_users.php" method="POST">
-                                                <input type="hidden" name="user_id" value="<?= $row['id'] ?>">
-                                                <div class="mb-3">
-                                                    <label for="username" class="form-label">ชื่อผู้ใช้</label>
-                                                    <input type="text" class="form-control" name="username" value="<?= htmlspecialchars($row['username']) ?>" required>
-                                                </div>
-                                                <button type="submit" name="edit_user" class="btn btn-primary">บันทึกการแก้ไข</button>
-                                            </form>
-                                        </div>
+                        <!-- Modal ฟอร์มเพิ่มพนักงาน -->
+                        <div class="modal fade" id="addUserModal" tabindex="-1" aria-labelledby="addUserModalLabel" aria-hidden="true">
+                            <div class="modal-dialog modal-dialog-centered"> <!-- เพิ่ม modal-dialog-centered ให้ modal อยู่ตรงกลาง -->
+                                <div class="modal-content">
+                                    <div class="modal-header">
+                                        <h5 class="modal-title" id="addUserModalLabel">เพิ่มพนักงานใหม่</h5>
+                                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                                    </div>
+                                    <div class="modal-body">
+                                        <form action="manage_users.php" method="POST">
+                                            <div class="mb-3">
+                                                <label for="username" class="form-label">ชื่อผู้ใช้</label>
+                                                <input type="text" class="form-control" name="username" required>
+                                            </div>
+                                            <div class="mb-3">
+                                                <label for="password" class="form-label">รหัสผ่าน</label>
+                                                <input type="password" class="form-control" name="password" required>
+                                            </div>
+                                            <button type="submit" name="add_user" class="btn btn-primary">เพิ่มพนักงาน</button>
+                                        </form>
                                     </div>
                                 </div>
                             </div>
+                        </div>
 
-                            <!-- ปุ่มลบ -->
-                            <a href="manage_users.php?delete_id=<?= $row['id'] ?>" class="btn btn-danger" onclick="return confirm('คุณต้องการลบพนักงานนี้?')">ลบ</a>
-                        </td>
-                    </tr>
-                <?php endwhile; ?>
-            </tbody>
-        </table>
+                        <hr>
+
+                        <!-- ตารางแสดงข้อมูลพนักงาน -->
+                        <div class="table-responsive"> <!-- แก้ไข class เป็น table-responsive แทน table table-responsive -->
+                            <table id="tabledata" class="table table-striped table-bordered">
+                                <thead style="font-size: small;">
+                                    <tr>
+                                        <th>ลำดับ</th>
+                                        <th>ชื่อผู้ใช้</th>
+                                        <th>เวลาที่สร้าง</th>
+                                        <th>จัดการ</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <?php while ($row = $result->fetch_assoc()): ?>
+                                        <tr>
+                                            <td><?= $row['id'] ?></td>
+                                            <td><?= htmlspecialchars($row['username']) ?></td>
+                                            <td><?= date('d-m-Y H:i:s', strtotime($row['created_at'])) ?></td>
+                                            <td>
+                                                <!-- ปุ่มแก้ไข -->
+                                                <button class="btn btn-warning btn-sm mb-1" data-bs-toggle="modal" data-bs-target="#editUserModal<?= $row['id'] ?>">
+                                                    <i class="fas fa-edit"></i> แก้ไข
+                                                </button>
+
+                                                <!-- Modal ฟอร์มแก้ไขพนักงาน -->
+                                                <div class="modal fade" id="editUserModal<?= $row['id'] ?>" tabindex="-1" aria-labelledby="editUserModalLabel" aria-hidden="true">
+                                                    <div class="modal-dialog modal-dialog-centered">
+                                                        <div class="modal-content">
+                                                            <div class="modal-header">
+                                                                <h5 class="modal-title" id="editUserModalLabel">แก้ไขข้อมูลพนักงาน</h5>
+                                                                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                                                            </div>
+                                                            <div class="modal-body">
+                                                                <form action="manage_users.php" method="POST">
+                                                                    <input type="hidden" name="user_id" value="<?= $row['id'] ?>">
+                                                                    <div class="mb-3">
+                                                                        <label for="username" class="form-label">ชื่อผู้ใช้</label>
+                                                                        <input type="text" class="form-control" name="username" value="<?= htmlspecialchars($row['username']) ?>" required>
+                                                                    </div>
+                                                                    <button type="submit" name="edit_user" class="btn btn-primary">บันทึกการแก้ไข</button>
+                                                                </form>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                </div>
+
+                                                <!-- ปุ่มลบ -->
+                                                <a href="manage_users.php?delete_id=<?= $row['id'] ?>" class="btn btn-danger btn-sm" onclick="return confirm('คุณต้องการลบพนักงานนี้?')">
+                                                    <i class="fas fa-trash"></i> ลบ
+                                                </a>
+                                            </td>
+                                        </tr>
+                                    <?php endwhile; ?>
+                                </tbody>
+                            </table>
+                        </div>
+
+                    </div>
                 </div>
             </div>
         </div>
