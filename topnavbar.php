@@ -1,7 +1,7 @@
 <nav class="navbar navbar-expand-lg navbar-dark bg-primary shadow-sm">
     <div class="container">
         <!-- โลโก้ -->
-        <a class="navbar-brand fw-bold text-white" href="#">Sales Dashboard</a>
+        <a class="navbar-brand fw-bold text-white" href="#">Martha groupsales</a>
         
         <!-- ปุ่มสำหรับเปิดเมนูบนมือถือ -->
         <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav" aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
@@ -15,10 +15,10 @@
                 <?php if (isset($_SESSION['role'])): ?>
                     <?php if ($_SESSION['role'] == 'admin'): ?>
                         <li class="nav-item">
-                            <a class="nav-link text-white" href="dashboard.php">แดชบอร์ด</a>
+                            <a class="nav-link text-white" href="dashboard.php">หน้าแรก</a>
                         </li>
                         <li class="nav-item">
-                            <a class="nav-link text-white" href="retrospect.php">ยอดขายย้อนหลัง</a>
+                            <a class="nav-link text-white" href="retrospect.php">แดชบอร์ดยอดขาย</a>
                         </li>
                         <li class="nav-item">
                             <a class="nav-link text-white" href="manage_sales.php">จัดการยอดขาย</a>

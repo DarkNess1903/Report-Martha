@@ -2,479 +2,503 @@
 session_start();
 include 'db.php';
 
+// ตรวจสอบการเข้าสู่ระบบ
 if (!isset($_SESSION['user_id'])) {
     header('Location: login.php');
     exit();
 }
 
-$current_year = date("Y");
+$currentYear = date('Y');
+$currentMonth = date('n');
 
-// ดึงข้อมูลยอดขายรวมรายเดือน, รายไตรมาส และสินค้า
-$sql = "SELECT month, quarter, product, SUM(amount) AS total_amount
-        FROM sales
-        WHERE year = $current_year
-        GROUP BY month, quarter, product
-        ORDER BY month";
-$result = $conn->query($sql);
+$yearsAvailable = [];
+$sqlYears = "SELECT DISTINCT year FROM sales ORDER BY year DESC";
+$result = $conn->query($sqlYears);
+while ($row = $result->fetch_assoc()) {
+    $yearsAvailable[] = $row['year'];
+}
 
-$monthly_data = [];
-$quarterly_data = [];
-$product_data = [];
+// ปีที่เลือก (ดึงจาก GET หรือใช้ค่าปัจจุบันและปีก่อนหน้า)
+$year1 = isset($_GET['year1']) ? intval($_GET['year1']) : $currentYear;
+$year2 = isset($_GET['year2']) ? intval($_GET['year2']) : $currentYear - 1;
 
-if ($result->num_rows > 0) {
-    while($row = $result->fetch_assoc()) {
-        $month = $row['month'];
-        $quarter = $row['quarter'];
-        $product = $row['product'];
-        $amount = $row['total_amount'];
+// ดึงข้อมูลยอดขายของปีที่เลือก
+$monthlySalesYear1 = array_fill(1, 12, 0);
+$monthlySalesYear2 = array_fill(1, 12, 0);
 
-        $monthly_data[$month] = $amount;
-        $quarterly_data[$quarter][] = $amount;
-        $product_data[$product][$month] = $amount;
+$sql = "SELECT month, SUM(amount) AS total_amount FROM sales WHERE year = ? GROUP BY month";
+$stmt = $conn->prepare($sql);
+
+// ปี 1
+$stmt->bind_param("i", $year1);
+$stmt->execute();
+$result = $stmt->get_result();
+while ($row = $result->fetch_assoc()) {
+    $monthlySalesYear1[intval($row['month'])] = $row['total_amount'];
+}
+
+// ปี 2
+$stmt->bind_param("i", $year2);
+$stmt->execute();
+$result = $stmt->get_result();
+while ($row = $result->fetch_assoc()) {
+    $monthlySalesYear2[intval($row['month'])] = $row['total_amount'];
+}
+
+$currentYear = date('Y');
+$currentMonth = date('n');
+$lastMonth = $currentMonth == 1 ? 12 : $currentMonth - 1;
+$lastMonthYear = $currentMonth == 1 ? $currentYear - 1 : $currentYear;
+
+// กำหนดชื่อเดือนภาษาไทย
+$monthNames = ['ม.ค.', 'ก.พ.', 'มี.ค.', 'เม.ย.', 'พ.ค.', 'มิ.ย.', 'ก.ค.', 'ส.ค.', 'ก.ย.', 'ต.ค.', 'พ.ย.', 'ธ.ค.'];
+
+// ดึงยอดขายรวมปีปัจจุบัน
+$sqlTotalSales = "SELECT SUM(amount) AS total_sales FROM sales WHERE year = ?";
+$stmt = $conn->prepare($sqlTotalSales);
+$stmt->bind_param("i", $currentYear);
+$stmt->execute();
+$totalSalesResult = $stmt->get_result()->fetch_assoc();
+$totalSales = $totalSalesResult['total_sales'] ?? 0;
+
+$lastYear = $currentYear - 1;
+
+// ดึงยอดขายรายเดือนของปีปัจจุบัน
+$sqlMonthlySales = "
+    SELECT month, SUM(amount) AS total_amount
+    FROM sales
+    WHERE year = ?
+    GROUP BY month
+";
+$stmt = $conn->prepare($sqlMonthlySales);
+
+// ปีปัจจุบัน
+$stmt->bind_param("i", $currentYear);
+$stmt->execute();
+$result = $stmt->get_result();
+$monthlySalesCurrentYear = array_fill(1, 12, 0);
+while ($row = $result->fetch_assoc()) {
+    $monthlySalesCurrentYear[intval($row['month'])] = $row['total_amount'];
+}
+
+// ปีก่อนหน้า
+$stmt->bind_param("i", $lastYear);
+$stmt->execute();
+$result = $stmt->get_result();
+$monthlySalesLastYear = array_fill(1, 12, 0);
+while ($row = $result->fetch_assoc()) {
+    $monthlySalesLastYear[intval($row['month'])] = $row['total_amount'];
+}
+
+// คำนวณยอดขายเดือนนี้และเดือนก่อนหน้า สำหรับคำนวณ % เติบโต
+$salesThisMonth = $monthlySalesCurrentYear[$currentMonth] ?? 0;
+
+// เดือนก่อนหน้า (ถ้าเดือนนี้เป็น มกราคม ให้ใช้ธันวาคมของปีก่อนหน้า)
+$prevMonth = $currentMonth == 1 ? 12 : $currentMonth - 1;
+$prevMonthYear = $currentMonth == 1 ? $currentYear - 1 : $currentYear;
+
+if ($prevMonthYear == $currentYear) {
+    $salesLastMonth = $monthlySalesCurrentYear[$prevMonth] ?? 0;
+} else {
+    // ถ้าเดือนก่อนหน้าอยู่ปีที่แล้ว ใช้ข้อมูลจาก $monthlySalesLastYear
+    $salesLastMonth = $monthlySalesLastYear[$prevMonth] ?? 0;
+}
+
+// คำนวณ % การเติบโต
+if ($salesLastMonth == 0) {
+    $growthPercent = ($salesThisMonth > 0) ? 100 : 0;
+} else {
+    $growthPercent = (($salesThisMonth - $salesLastMonth) / $salesLastMonth) * 100;
+}
+
+$growthPercent = round($growthPercent, 2);
+
+// ดึงยอดขายย้อนหลัง 5 ปี (รายเดือน)
+$startYear = $currentYear - 4;
+$sqlPastYears = "
+    SELECT year, month, SUM(amount) AS total_amount
+    FROM sales
+    WHERE year BETWEEN ? AND ?
+    GROUP BY year, month
+    ORDER BY year ASC, month ASC
+";
+$stmt = $conn->prepare($sqlPastYears);
+$stmt->bind_param("ii", $startYear, $currentYear);
+$stmt->execute();
+$result = $stmt->get_result();
+
+$pastYearsData = [];
+while ($row = $result->fetch_assoc()) {
+    $y = $row['year'];
+    $m = $row['month'];
+    $amt = $row['total_amount'];
+
+    if (!isset($pastYearsData[$y])) {
+        $pastYearsData[$y] = array_fill(1, 12, 0); // เตรียมเดือน 1-12
+    }
+    $pastYearsData[$y][$m] = $amt;
+}
+
+// เติมข้อมูลปีที่ไม่มีข้อมูลเป็น 0 เต็ม 12 เดือนด้วย
+for ($y = $startYear; $y <= $currentYear; $y++) {
+    if (!isset($pastYearsData[$y])) {   
+        $pastYearsData[$y] = array_fill(1, 12, 0);
+    }
+}
+$maxSaleCurrentYear = max($monthlySalesCurrentYear);
+$maxSaleLastYear = max($monthlySalesLastYear);
+
+$totalSalesLastYear = array_sum($monthlySalesLastYear);
+$yearlyGrowthPercent = $totalSalesLastYear == 0 
+    ? 100 
+    : round((($totalSales - $totalSalesLastYear) / $totalSalesLastYear) * 100, 2);
+
+function formatShortNumber($number, $precision = 2) {
+    if ($number >= 1000000) {
+        return number_format($number / 1000000, $precision) . 'M';
+    } elseif ($number >= 1000) {
+        return number_format($number / 1000, $precision) . 'K';
+    } else {
+        return number_format($number, $precision);
     }
 }
 
-// ดึงข้อมูลยอดขายของพนักงานรายเดือนและรายไตรมาส
-$sql = "SELECT u.username, s.product, s.month, s.quarter, SUM(s.amount) AS total_amount
-        FROM sales s
-        JOIN users u ON s.user_id = u.id
-        WHERE s.year = $current_year
-        GROUP BY u.username, s.product, s.month, s.quarter
-        ORDER BY u.username, s.product, s.month";
-$result = $conn->query($sql);
-
-$employee_product_sales = [];
-
-if ($result->num_rows > 0) {
-    while($row = $result->fetch_assoc()) {
-        $username = $row['username'];
-        $product = $row['product'];
-        $month = $row['month'];
-        $quarter = $row['quarter'];
-        $amount = $row['total_amount'];
-
-        $employee_product_sales[$username][$product]['monthly'][$month] = $amount;
-
-        $employee_product_sales[$username][$product]['quarterly'][$quarter] = 
-            isset($employee_product_sales[$username][$product]['quarterly'][$quarter])
-                ? $employee_product_sales[$username][$product]['quarterly'][$quarter] + $amount
-                : $amount;
-    }
+// ดึงสินค้าขายดี 5 อันดับ
+$sqlTopProducts = "
+    SELECT product, SUM(amount) AS total_amount
+    FROM sales
+    GROUP BY product
+    ORDER BY total_amount DESC
+    LIMIT 5
+";
+$topProducts = [];
+$topAmounts = [];
+$result = $conn->query($sqlTopProducts);
+while ($row = $result->fetch_assoc()) {
+    $topProducts[] = $row['product'];
+    $topAmounts[] = $row['total_amount'];
 }
 
-// ดึงข้อมูลสินค้าขายดี 5 อันดับ
-$sql_best_selling = "SELECT product, SUM(amount) AS total_sales 
-                     FROM sales 
-                     WHERE year = $current_year
-                     GROUP BY product 
-                     ORDER BY total_sales DESC 
-                     LIMIT 5";
-$result_best = $conn->query($sql_best_selling);
-
-$best_selling_products = [];
-while ($row = $result_best->fetch_assoc()) {
-    $best_selling_products[] = $row;
+// ดึงสินค้าขายไม่ดี 5 อันดับ
+$sqlWorstProducts = "
+    SELECT product, SUM(amount) AS total_amount
+    FROM sales
+    GROUP BY product
+    ORDER BY total_amount ASC
+    LIMIT 5
+";
+$worstProducts = [];
+$worstAmounts = [];
+$result = $conn->query($sqlWorstProducts);
+while ($row = $result->fetch_assoc()) {
+    $worstProducts[] = $row['product'];
+    $worstAmounts[] = $row['total_amount'];
 }
 
-// ดึงข้อมูลสินค้าขายไม่ดี 5 อันดับ
-$sql_worst_selling = "SELECT product, SUM(amount) AS total_sales 
-                      FROM sales 
-                      WHERE year = $current_year
-                      GROUP BY product 
-                      ORDER BY total_sales ASC 
-                      LIMIT 5";
-$result_worst = $conn->query($sql_worst_selling);
-
-$worst_selling_products = [];
-while ($row = $result_worst->fetch_assoc()) {
-    $worst_selling_products[] = $row;
-}
-$best_selling_json = json_encode($best_selling_products);
-$worst_selling_json = json_encode($worst_selling_products);
-
+$stmt->close();
 $conn->close();
-
-// ส่งข้อมูลเป็น JSON ไปยัง JavaScript
 ?>
-<script>
-    var monthlyData = <?php echo json_encode($monthly_data); ?>;
-    var quarterlyData = <?php echo json_encode($quarterly_data); ?>;
-    var productData = <?php echo json_encode($product_data); ?>;
-    var employeeProductSales = <?php echo json_encode($employee_product_sales); ?>;
-    var bestSelling = <?php echo json_encode($best_selling_products); ?>;
-    var worstSelling = <?php echo json_encode($worst_selling_products); ?>;
-</script>
 
 <!DOCTYPE html>
 <html lang="th">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Dashboard</title>
-    <!-- เชื่อมต่อ Bootstrap 5 และ Chart.js -->
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/css/bootstrap.min.css" rel="stylesheet">
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>แดชบอร์ดรวมยอดขาย</title>
+
+    <!-- Bootstrap 5.3 -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+
+    <!-- Chart.js -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+
+    <!-- Font Awesome ล่าสุด -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 </head>
 <body>
     <!-- Include Top Navbar -->
     <?php include 'topnavbar.php'; ?>
 
-<div class="container mt-5">
-    <div class="row">
-        <div class="col-12 text-center">
-            <h2>กราฟข้อมูลทางการเงิน</h2>
-            <p>เลือกช่วงเวลาที่ต้องการแสดงข้อมูลยอดขาย</p>
-        </div>
-    </div>
-    
-    <div class="row mb-4">
-    <!-- กราฟยอดขาย -->
-    <div class="col-md-6">
-        <div class="card shadow-sm">
-            <div class="card-body">
-                <!-- ตัวเลือกในการเลือกช่วงเวลาที่ต้องการแสดง -->
-                <label for="timePeriodSelect">เลือกช่วงเวลายอดขาย:</label>
-                <select id="timePeriodSelect" class="form-select mb-2">
-                    <option value="monthly">รายเดือน</option>
-                    <option value="quarterly">รายไตรมาส</option>
-                </select>     
+    <div class="container mt-5 mb-5">
+        <?php if (!empty($errorMsg)) : ?>
+            <div class="alert alert-warning text-center"><?= $errorMsg ?></div>
+        <?php endif; ?>
 
-                <!-- ปุ่มขยายกราฟ -->
-                <div class="d-flex justify-content-end mb-2">
-                    <button class="btn btn-sm btn-outline-primary" onclick="showFullScreenChart('timePeriodChart')">
-                        <i class="fas fa-expand"></i> ขยาย
-                    </button>
-                </div>
-
-                <!-- แสดงกราฟยอดขาย -->
-                <canvas id="timePeriodChart"></canvas>
-            </div>
-        </div>
-    </div>
-
-    <!-- กราฟสินค้า -->
-    <div class="col-md-6">
-        <div class="card shadow-sm">
-            <div class="card-body">
-                <!-- ตัวเลือกช่วงเวลาในการแสดงกราฟสินค้า -->
-                <label for="productTimeSelect">เลือกช่วงเวลาสำหรับกราฟสินค้า:</label>
-                <select id="productTimeSelect" class="form-select mb-2">
-                    <option value="monthly">รายเดือน</option>
-                    <option value="quarterly">รายไตรมาส</option>
+        <!-- ฟอร์มเลือกปีเปรียบเทียบ -->
+        <form method="GET" class="row g-2 align-items-center justify-content-center mb-3">
+            <div class="col-12 col-md-auto">
+                <label for="year1" class="form-label mb-0">ปีที่ 1:</label>
+                <select name="year1" id="year1" class="form-select">
+                    <?php foreach ($yearsAvailable as $y): ?>
+                        <option value="<?= $y ?>" <?= $y == $year1 ? 'selected' : '' ?>><?= $y ?></option>
+                    <?php endforeach; ?>
                 </select>
-
-                <!-- ปุ่มขยายกราฟ -->
-                <div class="d-flex justify-content-end mb-2">
-                    <button class="btn btn-sm btn-outline-primary" onclick="showFullScreenChart('productChart')">
-                        <i class="fas fa-expand"></i> ขยาย
-                    </button>
-                </div>
-
-                <canvas id="productChart"></canvas> <!-- กราฟสินค้า -->
             </div>
-        </div>
-    </div>
-</div>
-
-<!-- Modal แบบเต็มหน้าจอ -->
-<div class="modal fade" id="chartModal" tabindex="-1" aria-labelledby="chartModalLabel" aria-hidden="true">
-    <div class="modal-dialog modal-xl"> <!-- เปลี่ยนขนาดจาก fullscreen เป็น xl -->
-        <div class="modal-content bg-white">
-            <div class="modal-header">
-                <h5 class="modal-title fw-bold fs-4" id="chartModalLabel">กราฟแบบขยาย</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="ปิด"></button>
+            <div class="col-12 col-md-auto">
+                <label for="year2" class="form-label mb-0">ปีที่ 2:</label>
+                <select name="year2" id="year2" class="form-select">
+                    <?php foreach ($yearsAvailable as $y): ?>
+                        <option value="<?= $y ?>" <?= $y == $year2 ? 'selected' : '' ?>><?= $y ?></option>
+                    <?php endforeach; ?>
+                </select>
             </div>
-            <div class="modal-body">
-                <div class="w-100" style="height:500px;"> <!-- กำหนดความสูงกราฟ -->
-                    <canvas id="fullScreenChart" style="width:100%; height:100%;"></canvas>
-                </div>
+            <div class="col-12 col-md-auto">
+                <button type="submit" class="btn btn-primary w-100">เปรียบเทียบ</button>
             </div>
-        </div>
-    </div>
-</div>
+        </form>
 
-<!-- กราฟสินค้าขายดีและขายไม่ดี -->
-<div class="row">
-    <!-- กราฟสินค้าขายดี -->
-    <div class="col-md-6">
-        <div class="card shadow-sm">
-            <div class="card-body">
-                <h5 class="card-title">สินค้าขายดี 5 อันดับ</h5>
+        <!-- หัวข้อ -->
+        <h5 class="fw-bold text-center mb-3">
+            เปรียบเทียบยอดขายรายเดือน (ปี <?= $year1 ?> vs <?= $year2 ?>)
+        </h5>
 
-                <!-- ปุ่มขยายกราฟ -->
-                <div class="d-flex justify-content-end mb-2">
-                    <button class="btn btn-sm btn-outline-primary" onclick="showFullScreenChart('bestSellingChart')">
-                        <i class="fas fa-expand"></i> ขยาย
-                    </button>
-                </div>
+        <!-- ตารางยอดขาย -->
+        <div class="table-responsive">
+            <table class="table table-bordered text-center align-middle">
+                <thead class="table-light">
+                    <tr>
+                        <th>เดือน</th>
+                        <?php foreach ($monthNames as $month): ?>
+                            <th><?= $month ?></th>
+                        <?php endforeach; ?>
+                    </tr>
+                </thead>
+                <tbody>
+                    <!-- ปีที่ 1 -->
+                    <tr>
+                        <td class="fw-bold text-primary"><?= $year1 ?></td>
+                        <?php for ($m = 1; $m <= 12; $m++): ?>
+                            <td title="<?= number_format($monthlySalesYear1[$m], 2) ?> บาท">
+                                <?= formatShortNumber($monthlySalesYear1[$m] ?? 0) ?>฿
+                            </td>
+                        <?php endfor; ?>
+                    </tr>
 
-                <canvas id="bestSellingChart"></canvas>
-            </div>
-        </div>
-    </div>
+                    <!-- ปีที่ 2 -->
+                    <tr>
+                        <td class="fw-bold text-secondary"><?= $year2 ?></td>
+                        <?php for ($m = 1; $m <= 12; $m++): ?>
+                            <td title="<?= number_format($monthlySalesYear2[$m], 2) ?> บาท">
+                                <?= formatShortNumber($monthlySalesYear2[$m] ?? 0) ?>฿
+                            </td>
+                        <?php endfor; ?>
+                    </tr>
 
-    <!-- กราฟสินค้าขายไม่ดี -->
-    <div class="col-md-6">
-        <div class="card shadow-sm">
-            <div class="card-body">
-                <h5 class="card-title">สินค้าขายไม่ดี 5 อันดับ</h5>
+                    <!-- การเปลี่ยนแปลง -->
+                    <tr>
+                        <td class="fw-bold">การเปลี่ยนแปลง</td>
+                        <?php for ($m = 1; $m <= 12; $m++):
+                            $sale1 = $monthlySalesYear1[$m] ?? 0;
+                            $sale2 = $monthlySalesYear2[$m] ?? 0;
 
-                <!-- ปุ่มขยายกราฟ -->
-                <div class="d-flex justify-content-end mb-2">
-                    <button class="btn btn-sm btn-outline-primary" onclick="showFullScreenChart('worstSellingChart')">
-                        <i class="fas fa-expand"></i> ขยาย
-                    </button>
-                </div>
-
-                <canvas id="worstSellingChart"></canvas>
-            </div>
-        </div>
-    </div>
-</div>
-
-<script>
-    var ctx1 = document.getElementById('timePeriodChart').getContext('2d');
-    var ctx2 = document.getElementById('productChart').getContext('2d');
-
-    // กราฟยอดขายในรูปแบบเริ่มต้น (รายเดือน)
-    var timePeriodChart = new Chart(ctx1, {
-        type: 'line',
-        data: {
-            labels: ['มกราคม', 'กุมภาพันธ์', 'มีนาคม', 'เมษายน', 'พฤษภาคม', 'มิถุนายน', 'กรกฎาคม', 'สิงหาคม', 'กันยายน', 'ตุลาคม', 'พฤศจิกายน', 'ธันวาคม'],
-            datasets: [{
-                label: 'ข้อมูลรายเดือน',
-                data: [1,2,3,4,5,6,7,8,9,10,11,12].map(function(m) {
-                    return monthlyData[m] || 0;
-                }),
-                borderColor: 'rgba(75, 192, 192, 1)',
-                fill: false,
-                tension: 0.3
-            }]
-        }
-    });
-    // ฟังก์ชันเพื่อสร้างสีจาก HSL
-    function generateHSLColor(index) {
-        var hue = (index * 360 / Object.keys(productData).length) % 360;  // คำนวณค่า Hue
-        return 'hsl(' + hue + ', 70%, 50%)';  // Saturation 70%, Lightness 50%
-    }
-
-    // กราฟสินค้าในรูปแบบเริ่มต้น (รายเดือน)
-    var productChart = new Chart(ctx2, {
-        type: 'line',
-        data: {
-            labels: ['มกราคม', 'กุมภาพันธ์', 'มีนาคม', 'เมษายน', 'พฤษภาคม', 'มิถุนายน', 'กรกฎาคม', 'สิงหาคม', 'กันยายน', 'ตุลาคม', 'พฤศจิกายน', 'ธันวาคม'],
-            datasets: Object.keys(productData).map(function(product, index) {
-                return {
-                    label: product,
-                    data: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12].map(function(m) {
-                        return productData[product][m] || 0;
-                    }),
-                    borderColor: generateHSLColor(index), // ใช้สีจากฟังก์ชัน HSL
-                    fill: false,
-                    tension: 0.3
-                };
-            })
-        }
-    });
-
-    // อัปเดตกราฟยอดขายตามช่วงเวลา
-    document.getElementById('timePeriodSelect').addEventListener('change', function() {
-        var selectedPeriod = this.value;
-        var newLabels = [];
-        var newData = [];
-        var labelPrefix = "";
-
-        if (selectedPeriod == "monthly") {
-            newLabels = ['มกราคม', 'กุมภาพันธ์', 'มีนาคม', 'เมษายน', 'พฤษภาคม', 'มิถุนายน', 'กรกฎาคม', 'สิงหาคม', 'กันยายน', 'ตุลาคม', 'พฤศจิกายน', 'ธันวาคม'];
-            newData = [1,2,3,4,5,6,7,8,9,10,11,12].map(function(m) {
-                return monthlyData[m] || 0;
-            });
-            labelPrefix = "ข้อมูลรายเดือน";
-        } else if (selectedPeriod == "quarterly") {
-            newLabels = ['ไตรมาส 1', 'ไตรมาส 2', 'ไตรมาส 3', 'ไตรมาส 4'];
-            newData = [1, 2, 3, 4].map(function(q) {
-                let sum = quarterlyData[q];
-                return Array.isArray(sum) ? sum.reduce((a, b) => a + b, 0) : 0;
-            });
-            labelPrefix = "ข้อมูลรายไตรมาส";
-        }
-
-        timePeriodChart.data.labels = newLabels;
-        timePeriodChart.data.datasets[0].label = labelPrefix;
-        timePeriodChart.data.datasets[0].data = newData;
-        timePeriodChart.update();
-    });
-
-    // อัปเดตกราฟสินค้า
-    document.getElementById('productTimeSelect').addEventListener('change', function() {
-        var selectedPeriod = this.value;
-        var newLabels = [];
-        var newDatasets = [];
-
-        // กำหนด label
-        if (selectedPeriod === "monthly") {
-            newLabels = ['มกราคม', 'กุมภาพันธ์', 'มีนาคม', 'เมษายน', 'พฤษภาคม', 'มิถุนายน', 'กรกฎาคม', 'สิงหาคม', 'กันยายน', 'ตุลาคม', 'พฤศจิกายน', 'ธันวาคม'];
-        } else if (selectedPeriod === "quarterly") {
-            newLabels = ['ไตรมาส 1', 'ไตรมาส 2', 'ไตรมาส 3', 'ไตรมาส 4'];
-        }
-
-        // สร้าง datasets
-        var products = Object.keys(productData);
-        newDatasets = products.map(function(product, index) {
-            var hue = (index * 360 / products.length); // สร้างสีไม่ซ้ำ
-            var dataPoints = (selectedPeriod === 'monthly'
-                ? [1,2,3,4,5,6,7,8,9,10,11,12]
-                : [1,2,3,4]
-            ).map(function(unit) {
-                return productData[product][unit] || 0;
-            });
-
-            return {
-                label: product,
-                data: dataPoints,
-                borderColor: `hsl(${hue}, 70%, 50%)`,
-                fill: false,
-                tension: 0.4 // ความโค้งของเส้น
-            };
-        });
-
-        // อัปเดตกราฟ
-        productChart.data.labels = newLabels;
-        productChart.data.datasets = newDatasets;
-        productChart.update();
-    });
-
-    //เต็มจอ
-    let fullScreenChartInstance;
-
-    function showFullScreenChart(originalChartId) {
-        const originalChart = Chart.getChart(originalChartId);
-        if (!originalChart) return;
-
-        if (fullScreenChartInstance) {
-            fullScreenChartInstance.destroy();
-        }
-
-        const ctx = document.getElementById('fullScreenChart').getContext('2d');
-
-        fullScreenChartInstance = new Chart(ctx, {
-            type: originalChart.config.type,
-            data: JSON.parse(JSON.stringify(originalChart.data)),
-            options: {
-                responsive: true,
-                maintainAspectRatio: false,
-                plugins: {
-                    legend: {
-                        labels: {
-                            font: {
-                                size: 16 // เพิ่มขนาดตัวอักษรของ legend
+                            if ($sale2 == 0 && $sale1 == 0) {
+                                $growth = 0;
+                                $class = 'text-muted';
+                                $icon = '<i class="fas fa-minus"></i>';
+                            } elseif ($sale2 == 0 && $sale1 > 0) {
+                                $growth = 100;
+                                $class = 'text-success fw-bold';
+                                $icon = '<i class="fas fa-arrow-up"></i>';
+                            } else {
+                                $growth = (($sale1 - $sale2) / $sale2) * 100;
+                                $class = $growth >= 0 ? 'text-success fw-bold' : 'text-danger fw-bold';
+                                $icon = $growth >= 0 ? '<i class="fas fa-arrow-up"></i>' : '<i class="fas fa-arrow-down"></i>';
                             }
-                        }
-                    },
-                    title: {
-                        display: true,
-                        text: originalChart.options.plugins?.title?.text || 'กราฟ',
-                        font: {
-                            size: 20 // ขนาดหัวข้อกราฟ
-                        }
-                    }
-                },
-                scales: {
-                    x: {
-                        ticks: {
-                            font: {
-                                size: 14 // แกน X
-                            }
-                        }
-                    },
-                    y: {
-                        ticks: {
-                            font: {
-                                size: 14 // แกน Y
-                            }
-                        }
-                    }
-                }
-            }
-        });
+                        ?>
+                            <td class="<?= $class ?>">
+                                <?= $icon ?> <?= number_format($growth, 2) ?>%
+                            </td>
+                        <?php endfor; ?>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
 
-        const modal = new bootstrap.Modal(document.getElementById('chartModal'));
-        modal.show();
-    }
+        <!-- กราฟสินค้าขายดี และขายไม่ดี -->
+        <div class="row">
+            <!-- ขายดี -->
+            <div class="col-12 col-lg-6 mb-4">
+                <div class="card shadow-sm h-100">
+                    <div class="card-body">
+                        <h5 class="text-center">สินค้าขายดี 5 อันดับ (รวมทุกปี)</h5>
+                        <canvas id="topProductsChart" height="200"></canvas>
+                    </div>
+                </div>
+            </div>
 
-    // รีเฟรชขนาดเมื่อแสดง modal
-    document.getElementById('chartModal').addEventListener('shown.bs.modal', () => {
-        if (fullScreenChartInstance) {
-            fullScreenChartInstance.resize();
-        }
-    });
-</script>
+            <!-- ขายไม่ดี -->
+            <div class="col-12 col-lg-6 mb-4">
+                <div class="card shadow-sm h-100">
+                    <div class="card-body">
+                        <h5 class="text-center">สินค้าขายไม่ดี 5 อันดับ (รวมทุกปี)</h5>
+                        <canvas id="worstProductsChart" height="200"></canvas>
+                    </div>
+                </div>
+            </div>
+        </div>
 
-<!-- เชื่อมต่อกับ Bootstrap JS -->
-<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/js/bootstrap.bundle.min.js"></script>
-
+        <!-- กราฟยอดขายย้อนหลัง -->
+        <div class="row">
+            <div class="col-12">
+                <div class="card shadow-sm p-4 mb-5">
+                    <h5 class="text-center mb-3">ยอดขายย้อนหลัง 5 ปี (รายเดือน)</h5>
+                    <div class="chart-container" style="position: relative; height:350px; max-height: 450px;">
+                        <canvas id="salesTrendChart"></canvas>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
 </body>
-</html>
-
 
 <script>
-    var bestSellingProducts = <?php echo $best_selling_json; ?>;
-    var worstSellingProducts = <?php echo $worst_selling_json; ?>;
-</script>
+    const pastYearsData = <?= json_encode($pastYearsData) ?>;
+    const currentYear = <?= $currentYear ?>;
 
-<script>
-// ฟังก์ชันสุ่มสี
-function generateRandomColor() {
-    var r = Math.floor(Math.random() * 256);
-    var g = Math.floor(Math.random() * 256);
-    var b = Math.floor(Math.random() * 256);
-    return 'rgba(' + r + ',' + g + ',' + b + ', 0.6)'; // สร้างสีแบบโปร่งใส
-}
+    // สร้าง array ปี (เรียงจากใหม่ไปเก่า)
+    const years = Object.keys(pastYearsData).sort((a, b) => b - a);
 
-// สร้างสีให้กับสินค้าแต่ละชนิด (ใช้ชื่อสินค้าหรือรหัสสินค้าในการระบุ)
-function getColorForProduct(product) {
-    if (!getColorForProduct.colorMap) {
-        getColorForProduct.colorMap = {}; // เก็บสีของสินค้าแต่ละตัว
-    }
+    // ป้ายเดือนภาษาไทย
+    const monthLabels =  ['ม.ค.', 'ก.พ.', 'มี.ค.', 'เม.ย.', 'พ.ค.', 'มิ.ย.', 'ก.ค.', 'ส.ค.', 'ก.ย.', 'ต.ค.', 'พ.ย.', 'ธ.ค.'];
 
-    if (!getColorForProduct.colorMap[product]) {
-        getColorForProduct.colorMap[product] = generateRandomColor(); // สร้างสีใหม่ให้สินค้า
-    }
+    // สร้าง datasets สำหรับแต่ละปี (เรียงปีจากใหม่ไปเก่า)
+    const datasets = years.map((year, idx) => {
+        const data = pastYearsData[year];
+        // สร้างสีโทนสบายตา (pastel)
+        const hue = (idx * 360 / years.length);
+        const color = `hsl(${hue}, 70%, 70%)`;
+        const borderColor = `hsl(${hue}, 70%, 40%)`;
 
-    return getColorForProduct.colorMap[product]; // ส่งคืนสีที่ถูกเก็บไว้
-}
+        // ถ้าเป็นปีปัจจุบันเน้นสีเข้มกว่า
+        const backgroundColor = year == currentYear ? borderColor : color;
 
-// ฟังก์ชันสร้างกราฟ
-function createChart(chartId, data, label) {
-    var ctx = document.getElementById(chartId).getContext('2d');
-    var labels = data.map(item => item.product);
-    var salesData = data.map(item => item.total_sales);
+        return {
+            label: 'ปี ' + year,
+            data: Object.values(data),
+            borderColor: borderColor,
+            backgroundColor: backgroundColor,
+            fill: false,
+            tension: 0.3,
+            borderWidth: year == currentYear ? 3 : 2,
+            pointRadius: year == currentYear ? 5 : 3,
+            hidden: false,
+        };
+    });
 
-    new Chart(ctx, {
-        type: 'bar',
+    const ctx = document.getElementById('salesTrendChart').getContext('2d');
+
+    const salesTrendChart = new Chart(ctx, {
+        type: 'line',
         data: {
-            labels: labels,
-            datasets: [{
-                label: label,
-                data: salesData,
-                backgroundColor: data.map(item => getColorForProduct(item.product)), // ใช้สีที่เหมือนกันตามชื่อสินค้า
-                borderColor: data.map(item => getColorForProduct(item.product)), // สีกรอบ
-                borderWidth: 1
-            }]
+            labels: monthLabels,
+            datasets: datasets
         },
         options: {
             responsive: true,
+            maintainAspectRatio: false, // <== เพิ่มบรรทัดนี้
+            interaction: {
+                mode: 'nearest',
+                intersect: false,
+            },
+            plugins: {
+                legend: {
+                    position: 'top'
+                },
+                title: {
+                    display: true,
+                    text: 'ยอดขายย้อนหลัง 5 ปี (รายเดือน)'
+                },
+                tooltip: {
+                    callbacks: {
+                        label: function(context) {
+                            return context.dataset.label + ': ' + context.parsed.y.toLocaleString('th-TH') + ' บาท';
+                        }
+                    }
+                }
+            },
             scales: {
-                y: { beginAtZero: true }
+                y: {
+                    beginAtZero: true,
+                    ticks: {
+                        callback: value => value.toLocaleString('th-TH') + ' บาท'
+                    }
+                }
             }
         }
     });
-}
+        
+    // ฟังก์ชันสุ่มสีสวยงาม
+    function generateColors(count, base = 'top') {
+        const colors = [];
+        const colorPool = base === 'top'
+            ? ['#4dc9f6', '#f67019', '#f53794', '#537bc4', '#acc236']
+            : ['#ff6384', '#ff9f40', '#ffcd56', '#4bc0c0', '#9966ff'];
+        for (let i = 0; i < count; i++) {
+            colors.push(colorPool[i % colorPool.length]);
+        }
+        return colors;
+    }
 
-// สร้างกราฟยอดขายสูงสุด
-createChart("bestSellingChart", bestSellingProducts, "ยอดขายสูงสุด");
-// สร้างกราฟยอดขายต่ำสุด
-createChart("worstSellingChart", worstSellingProducts, "ยอดขายต่ำสุด");
+    const topProducts = <?= json_encode($topProducts) ?>;
+    const topAmounts = <?= json_encode($topAmounts) ?>;
+    const worstProducts = <?= json_encode($worstProducts) ?>;
+    const worstAmounts = <?= json_encode($worstAmounts) ?>;
 
+    // สร้างสีสุ่มแต่ละแท่ง
+    const topColors = generateColors(topProducts.length, 'top');
+    const worstColors = generateColors(worstProducts.length, 'worst');
+
+    const barOptions = {
+        responsive: true,
+        plugins: {
+            legend: { display: false },
+            tooltip: {
+                callbacks: {
+                    label: ctx => ctx.parsed.y.toLocaleString('th-TH') + ' บาท'
+                }
+            }
+        },
+        scales: {
+            y: {
+                beginAtZero: true,
+                ticks: {
+                    callback: value => value.toLocaleString('th-TH') + ' บาท'
+                }
+            }
+        }
+    };
+
+    new Chart(document.getElementById('topProductsChart'), {
+        type: 'bar',
+        data: {
+            labels: topProducts,
+            datasets: [{
+                label: 'ยอดขายรวม',
+                data: topAmounts,
+                backgroundColor: topColors,
+                borderColor: topColors,
+                borderWidth: 1
+            }]
+        },
+        options: barOptions
+    });
+
+    new Chart(document.getElementById('worstProductsChart'), {
+        type: 'bar',
+        data: {
+            labels: worstProducts,
+            datasets: [{
+                label: 'ยอดขายรวม',
+                data: worstAmounts,
+                backgroundColor: worstColors,
+                borderColor: worstColors,
+                borderWidth: 1
+            }]
+        },
+        options: barOptions
+    });
 </script>
+
+</body>
+</html>

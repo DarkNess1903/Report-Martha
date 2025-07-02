@@ -55,28 +55,6 @@ if ($result && $result->num_rows > 0) {
     }
 }
 
-// ดึงข้อมูลยอดขายย้อนหลัง 5 ปี (รวมปีปัจจุบัน)
-$current_year = date("Y"); // เพิ่มตัวแปรปีปัจจุบัน
-$past_years = [$current_year - 4, $current_year - 3, $current_year - 2, $current_year - 1, $current_year]; // 5 ปี
-$past_years_data = [];
-
-$sql = "SELECT year, month, SUM(amount) AS total 
-        FROM sales 
-        WHERE year IN (" . implode(",", $past_years) . ")
-        GROUP BY year, month 
-        ORDER BY year, month";
-$result = $conn->query($sql);
-
-if ($result && $result->num_rows > 0) {
-    while ($row = $result->fetch_assoc()) {
-        $year = $row['year'];
-        $month = $row['month'];
-        $amount = $row['total'];
-
-        $past_years_data[$year][$month] = $amount;
-    }
-}
-
 // ดึงยอดขายรวมของพนักงานแต่ละคนในปีที่เลือก
 $sql = "SELECT u.username AS employee_name, SUM(s.amount) AS total_sales
         FROM sales s
@@ -98,6 +76,28 @@ while ($row = $result->fetch_assoc()) {
     $employee_sales[] = $row['total_sales'];
 }
 
+// ดึงสินค้าขายดี/ขายไม่ดี 5 อันดับของปีที่เลือก
+$sql = "SELECT product, SUM(amount) AS total_sales
+        FROM sales
+        WHERE year = ?
+        GROUP BY product
+        ORDER BY total_sales DESC";
+$stmt = $conn->prepare($sql);
+$stmt->bind_param("i", $selected_year);
+$stmt->execute();
+$result = $stmt->get_result();
+
+$top_products = [];
+$bottom_products = [];
+
+while ($row = $result->fetch_assoc()) {
+    $top_products[] = $row;
+}
+
+// แยก 5 อันดับแรกและ 5 อันดับล่าง (ถ้ามีมากพอ)
+$top_5_products = array_slice($top_products, 0, 5);
+$bottom_5_products = array_slice(array_reverse($top_products), 0, 5);
+
 $stmt->close();
 
 $conn->close();
@@ -113,136 +113,146 @@ $conn->close();
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
 </head>
 <body>
-<!-- Include Top Navbar -->
-<?php include 'topnavbar.php'; ?>
+    <!-- Include Top Navbar -->
+    <?php include 'topnavbar.php'; ?>
 
-<div class="container mt-5">
-    <h2 class="text-center mb-4">แดชบอร์ดยอดขายย้อนหลัง</h2>
+    <div class="container mt-5">
+        <h2 class="text-center mb-4">แดชบอร์ดยอดขาย</h2>
 
-<!-- ฟอร์มเลือกปี -->
-<div class="card shadow-sm mb-4 ">
-    <div class="card-body">
-        <form method="get" class="row align-items-center">
-            <div class="col-md-3">
-                <label for="yearSelect" class="form-label fw-bold">เลือกปี:</label>
-            </div>
-            <div class="col-md-6">
-                <select name="year" id="yearSelect" class="form-select" onchange="this.form.submit()">
-                    <?php foreach ($years as $year): ?>
-                        <option value="<?= $year ?>" <?= $year == $selected_year ? 'selected' : '' ?>><?= $year ?></option>
-                    <?php endforeach; ?>
-                </select>
-            </div>
-        </form>
-    </div>
-</div>
-
-<div class="row mb-4">
-<!-- กราฟยอดขาย -->
-    <div class="col-md-6 mb-4">
-        <div class="card shadow-sm h-100">
+        <!-- ฟอร์มเลือกปี -->
+        <div class="card shadow-sm mb-4">
             <div class="card-body">
-                <h5 class="card-title text-center">ยอดขายตามช่วงเวลา</h5>
-                
-                <!-- บรรทัดเดียวกัน: เลือกช่วงเวลา + ปุ่มขยาย -->
-                <div class="row align-items-center mb-3">
-                    <div class="col-8">
-                        <label for="timePeriodSelect" class="form-label mb-1">เลือกช่วงเวลา:</label>
-                        <select id="timePeriodSelect" class="form-select form-select-sm">
-                            <option value="monthly">รายเดือน</option>
-                            <option value="quarterly">รายไตรมาส</option>
+                <form method="get" class="row align-items-center">
+                    <div class="col-md-3">
+                        <label for="yearSelect" class="form-label fw-bold">เลือกปี:</label>
+                    </div>
+                    <div class="col-md-6">
+                        <select name="year" id="yearSelect" class="form-select" onchange="this.form.submit()">
+                            <?php foreach ($years as $year): ?>
+                                <option value="<?= $year ?>" <?= $year == $selected_year ? 'selected' : '' ?>><?= $year ?></option>
+                            <?php endforeach; ?>
                         </select>
                     </div>
-                    <div class="col-4 text-end mt-4">
-                        <button class="btn btn-sm btn-outline-primary" onclick="showFullScreenChart('timePeriodChart')">
+                </form>
+            </div>
+        </div>
+
+        <div class="row mb-4">
+            <!-- กราฟยอดขายตามช่วงเวลา -->
+            <div class="col-md-6 mb-4">
+                <div class="card shadow-sm h-100">
+                    <div class="card-body">
+                        <h5 class="card-title text-center">ยอดขายตามช่วงเวลา</h5>
+
+                        <div class="row align-items-center mb-3">
+                            <div class="col-8">
+                                <label for="timePeriodSelect" class="form-label mb-1">เลือกช่วงเวลา:</label>
+                                <select id="timePeriodSelect" class="form-select form-select-sm">
+                                    <option value="monthly">รายเดือน</option>
+                                    <option value="quarterly">รายไตรมาส</option>
+                                </select>
+                            </div>
+                            <div class="col-4 text-end mt-4">
+                                <button type="button" class="btn btn-sm btn-outline-primary" onclick="showFullScreenChart('timePeriodChart')">
+                                    <i class="fas fa-expand"></i> ขยาย
+                                </button>
+                            </div>
+                        </div>
+
+                        <canvas id="timePeriodChart"></canvas>
+                    </div>
+                </div>
+            </div>
+
+            <!-- กราฟยอดขายรายสินค้า -->
+            <div class="col-md-6 mb-4">
+                <div class="card shadow-sm h-100">
+                    <div class="card-body">
+                        <h5 class="card-title text-center">ยอดขายแยกตามสินค้า</h5>
+
+                        <div class="d-flex justify-content-end mb-3">
+                            <button type="button" class="btn btn-sm btn-outline-primary" onclick="showFullScreenChart('productChart')">
+                                <i class="fas fa-expand"></i> ขยาย
+                            </button>
+                        </div>
+
+                        <canvas id="productChart"></canvas>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- กราฟอันดับสินค้า -->
+        <div class="row">
+            <div class="col-md-6 mb-4">
+                <div class="card shadow-sm p-3 h-100 position-relative">
+                    <div class="d-flex justify-content-end mb-3">
+                        <button type="button" class="btn btn-sm btn-outline-primary" onclick="showFullScreenChart('topProductsChart')">
                             <i class="fas fa-expand"></i> ขยาย
                         </button>
                     </div>
+                    <h5 class="text-center">สินค้าขายดี 5 อันดับ</h5>
+                    <canvas id="topProductsChart"></canvas>
                 </div>
-
-                <canvas id="timePeriodChart"></canvas>
             </div>
-        </div>
-    </div>
 
-    <!-- กราฟรายสินค้า -->
-    <div class="col-md-6 mb-4">
-        <div class="card shadow-sm h-100">
-            <div class="card-body">
-                <h5 class="card-title text-center">ยอดขายแยกตามสินค้า</h5>
-
-                <!-- บรรทัดเดียวกัน: ปุ่มขยายเท่านั้น -->
-                <div class="d-flex justify-content-end mb-3">
-                    <button class="btn btn-sm btn-outline-primary" onclick="showFullScreenChart('productChart')">
-                        <i class="fas fa-expand"></i> ขยาย
-                    </button>
-                </div>
-
-                <canvas id="productChart"></canvas>
-            </div>
-        </div>
-    </div>
-</div>
-
-<!-- กราฟยอดขายพนักงานแต่ละคน -->
-     <div class="col-12 mb-4">
-        <div class="card shadow-sm">
-            <div class="card-body">
-                <div class="col-md-12 mb-4 chart-container">
-                    <div class="d-flex justify-content-between align-items-center mb-2">
-                        <h5 class="mb-0">ยอดขายพนักงาน ปี <?= $selected_year ?></h5>
-                        <button class="btn btn-sm btn-outline-primary" onclick="showFullScreenChart('employeeSalesChart')">
+            <div class="col-md-6 mb-4">
+                <div class="card shadow-sm p-3 h-100 position-relative">
+                    <div class="d-flex justify-content-end mb-3">
+                        <button type="button" class="btn btn-sm btn-outline-primary" onclick="showFullScreenChart('bottomProductsChart')">
                             <i class="fas fa-expand"></i> ขยาย
                         </button>
                     </div>
-                    <canvas id="employeeSalesChart" height="150"></canvas>
+                    <h5 class="text-center">สินค้าขายไม่ดี 5 อันดับ</h5>
+                    <canvas id="bottomProductsChart"></canvas>
                 </div>
             </div>
         </div>
-    </div>
 
-    <!-- กราฟเปรียบเทียบยอดขายย้อนหลัง 5 ปี -->
-    <div class="col-12 mb-4">
-        <div class="card shadow-sm">
-            <div class="card-body">
-                <h5 class="card-title text-center">กราฟเปรียบเทียบยอดขายย้อนหลัง 5 ปี</h5>
-
-                <!-- ปุ่มขยาย -->
-                <div class="d-flex justify-content-end mb-2">
-                    <button class="btn btn-sm btn-outline-primary" onclick="showFullScreenChart('pastYearsChart')">
-                        <i class="fas fa-expand"></i> ขยาย
-                    </button>
+        <!-- กราฟยอดขายพนักงาน -->
+        <div class="row">
+            <div class="col-12 mb-4">
+                <div class="card shadow-sm">
+                    <div class="card-body">
+                        <div class="col-md-12 mb-4 chart-container">
+                            <div class="d-flex justify-content-between align-items-center mb-2">
+                                <h5 class="mb-0">ยอดขายพนักงาน ปี <?= $selected_year ?></h5>
+                                <button type="button" class="btn btn-sm btn-outline-primary" onclick="showFullScreenChart('employeeSalesChart')">
+                                    <i class="fas fa-expand"></i> ขยาย
+                                </button>
+                            </div>
+                            <canvas id="employeeSalesChart" height="150"></canvas>
+                        </div>
+                    </div>
                 </div>
-
-                <canvas id="pastYearsChart"></canvas>
             </div>
         </div>
-    </div>
 
-    <!-- Modal สำหรับแสดงกราฟเต็มจอ -->
-    <div class="modal fade" id="chartModal" tabindex="-1" aria-labelledby="chartModalLabel" aria-hidden="true">
-        <div class="modal-dialog modal-xl"> <!-- เปลี่ยนขนาดจาก fullscreen เป็น xl -->
-            <div class="modal-content bg-white">
-                <div class="modal-header">
-                    <h5 class="modal-title fw-bold fs-4" id="chartModalLabel">กราฟแบบขยาย</h5>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="ปิด"></button>
-                </div>
-                <div class="modal-body">
-                    <div class="w-100" style="height:500px;"> <!-- กำหนดความสูงกราฟ -->
-                        <canvas id="fullScreenChart" style="width:100%; height:100%;"></canvas>
+        <!-- Modal สำหรับแสดงกราฟเต็มจอ -->
+        <div class="modal fade" id="chartModal" tabindex="-1" aria-labelledby="chartModalLabel" aria-hidden="true">
+            <div class="modal-dialog modal-xl">
+                <div class="modal-content bg-white">
+                    <div class="modal-header">
+                        <h5 class="modal-title fw-bold fs-4" id="chartModalLabel">กราฟแบบขยาย</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="ปิด"></button>
+                    </div>
+                    <div class="modal-body">
+                        <div class="w-100" style="height:500px;">
+                            <canvas id="fullScreenChart" style="width:100%; height:100%;"></canvas>
+                        </div>
                     </div>
                 </div>
             </div>
         </div>
     </div>
-
-
-    <script>
+    
+<script>
     // แปลงข้อมูลจาก PHP มาเป็น JavaScript object
     const monthlyData = <?= json_encode($monthly_data) ?>;
     const quarterlyData = <?= json_encode($quarterly_data) ?>;
     const productData = <?= json_encode($product_data) ?>;
-    const pastYearsData = <?= json_encode($past_years_data) ?>;
+    const top5Products = <?= json_encode($top_5_products) ?>;
+    const bottom5Products = <?= json_encode($bottom_5_products) ?>;
 
     // ป้ายกำกับเดือนและไตรมาส
     const monthLabels = ['มกราคม', 'กุมภาพันธ์', 'มีนาคม', 'เมษายน', 'พฤษภาคม', 'มิถุนายน',
@@ -299,32 +309,58 @@ $conn->close();
         timePeriodChart.update();
     });
 
-    // กราฟแสดงยอดขายย้อนหลัง 5 ปี
-    const ctxPastYears = document.getElementById('pastYearsChart').getContext('2d');
-    const colors = ['#007bff', '#28a745', '#ffc107', '#dc3545', '#17a2b8']; // เพิ่มสีสำหรับปี 5 ปี
+    //กราฟอันดับ
+    function getColorPalette(count) {
+        return Array.from({length: count}, (_, i) => `hsl(${i * 360 / count}, 70%, 70%)`);
+    }
 
-    // กราฟย้อนหลัง 5 ปี
-    const pastYearsChart = new Chart(ctxPastYears, {
-        type: 'line',
+    // กราฟสินค้าขายดี
+    const ctxTop = document.getElementById('topProductsChart').getContext('2d');
+    new Chart(ctxTop, {
+        type: 'bar',
         data: {
-            labels: shortMonthLabels,
-            datasets: Object.keys(pastYearsData).map((year, idx) => ({
-                label: 'ปี ' + year,
-                data: Array.from({ length: 12 }, (_, m) => pastYearsData[year][m + 1] || 0),
-                borderColor: colors[idx % colors.length],
-                fill: false,
-                tension: 0.3  // ทำให้เส้นโค้ง
-            }))
+            labels: top5Products.map(item => item.product),
+            datasets: [{
+                label: 'ยอดขาย (บาท)',
+                data: top5Products.map(item => item.total_sales),
+                backgroundColor: getColorPalette(top5Products.length),
+                borderWidth: 1
+            }]
         },
         options: {
             responsive: true,
-            plugins: {
-                legend: {
-                    position: 'top'
-                },
-                title: {
-                    display: true,
-                    text: 'ยอดขายย้อนหลัง 5 ปี'
+            scales: {
+                y: {
+                    beginAtZero: true,
+                    ticks: {
+                        callback: value => new Intl.NumberFormat('th-TH').format(value) + ' บาท'
+                    }
+                }
+            }
+        }
+    });
+
+    // กราฟสินค้าขายไม่ดี
+    const ctxBottom = document.getElementById('bottomProductsChart').getContext('2d');
+    new Chart(ctxBottom, {
+        type: 'bar',
+        data: {
+            labels: bottom5Products.map(item => item.product),
+            datasets: [{
+                label: 'ยอดขาย (บาท)',
+                data: bottom5Products.map(item => item.total_sales),
+                backgroundColor: getColorPalette(bottom5Products.length),
+                borderWidth: 1
+            }]
+        },
+        options: {
+            responsive: true,
+            scales: {
+                y: {
+                    beginAtZero: true,
+                    ticks: {
+                        callback: value => new Intl.NumberFormat('th-TH').format(value) + ' บาท'
+                    }
                 }
             }
         }
@@ -380,9 +416,6 @@ $conn->close();
             }
         }
     });
-
-    // ตรวจสอบข้อมูลที่ส่งมาจาก PHP
-    console.log(pastYearsData);
     
     let fullScreenChartInstance;
 
