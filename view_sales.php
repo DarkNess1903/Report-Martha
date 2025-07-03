@@ -34,6 +34,26 @@ $quarter_to_month = [
     '3' => 'ไตรมาส 3',
     '4' => 'ไตรมาส 4'
 ];
+
+// ดึงยอดขายรายเดือนของพนักงาน
+$sql_monthly_sales = "SELECT year, month, SUM(amount) AS total_amount 
+                      FROM sales 
+                      WHERE user_id = ? 
+                      GROUP BY year, month 
+                      ORDER BY year DESC, month ASC";
+$stmt_monthly_sales = $conn->prepare($sql_monthly_sales);
+$stmt_monthly_sales->bind_param("i", $user_id);
+$stmt_monthly_sales->execute();
+$monthly_sales_result = $stmt_monthly_sales->get_result();
+$stmt_monthly_sales->close();
+
+// แปลงเลขเดือนเป็นชื่อไทย
+$month_names = [
+    1 => 'มกราคม', 2 => 'กุมภาพันธ์', 3 => 'มีนาคม', 4 => 'เมษายน',
+    5 => 'พฤษภาคม', 6 => 'มิถุนายน', 7 => 'กรกฎาคม', 8 => 'สิงหาคม',
+    9 => 'กันยายน', 10 => 'ตุลาคม', 11 => 'พฤศจิกายน', 12 => 'ธันวาคม'
+];
+
 ?>
 
 <!DOCTYPE html>
@@ -77,100 +97,152 @@ $quarter_to_month = [
     <!-- จบลิงค์ของตาราง -->
 </head>
 <body>
-    <?php include 'topnavbar.php'; ?>
-    <div class="container mt-5">
-    <div class="col-md-12">
-            <div class="card shadow-sm">
-                 <div class="card-body">
-        <h2 class="mb-4">ข้อมูลยอดขายของคุณ</h2>
+<?php include 'topnavbar.php'; ?>
 
-        <!-- ยอดขายรวมทั้งหมด -->
-        <div class="mb-4 d-flex justify-content-between align-items-center">
-            <h4 class="mb-0">ยอดขายรวมทั้งหมด:</h4>
-            <span><?= number_format($total_sales_result->fetch_assoc()['total_sales'], 2) ?> บาท</span>
-        </div>
-        
-        <!-- ตารางยอดขายตามปี -->
-        <div class="table-responsive">
-            <table id="tabledata" class="table table-striped table-bordered">
-                <thead style="font-size: small;">
-                    <tr>
-                        <th>ปี</th>
-                        <th>ยอดขายรวม (บาท)</th>
-                        <th>ดูข้อมูล</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    <?php if ($yearly_sales_result->num_rows > 0): ?>
-                        <?php while ($row = $yearly_sales_result->fetch_assoc()): ?>
-                            <tr>
-                                <td><?= htmlspecialchars($row['year']) ?></td>
-                                <td><?= number_format($row['total_sales'], 2) ?> บาท</td>
-                                <td>
-                                    <a href="sales_details_by_year.php?year=<?= $row['year'] ?>" class="btn btn-sm btn-info">
-                                        ดูข้อมูล
-                                    </a>
-                                </td>
-                            </tr>
-                        <?php endwhile; ?>
-                    <?php else: ?>
-                        <tr>
-                            <td colspan="3" class="text-center">ไม่มีข้อมูลยอดขาย</td>
-                        </tr>
-                    <?php endif; ?>
-                </tbody>
-            </table>
-        </div>
-            </div>
-                </div>
-                    </div></br>
+<div class="container mt-5">
 
-        <!-- ข้อมูลยอดขายตามไตรมาส -->
+    <!--  กล่องแสดงยอดขายรวม -->
+    <div class="row mb-4">
         <div class="col-md-12">
             <div class="card shadow-sm">
-                 <div class="card-body">
-        <h3 class="mb-3">ข้อมูลยอดขายตามไตรมาส (ปีและไตรมาส):</h3>
-        <div class="table table-responsive">
-            <table id= "tabledata1" class="table table-striped table-boredered">
-                <thead style="font-size: small;">
-                <tr>
-                    <th>ปี</th>
-                    <th>ไตรมาส</th>
-                    <th>ยอดขาย (บาท)</th>
-                </tr>
-            </thead>
-            <tbody>
-                <?php
-                // ดึงข้อมูลยอดขายตามปีและไตรมาส
-                $sql_quarterly_sales = "SELECT year, quarter, SUM(amount) AS total_amount FROM sales WHERE user_id = ? GROUP BY year, quarter ORDER BY year DESC, quarter ASC";
-                $stmt_quarterly_sales = $conn->prepare($sql_quarterly_sales);
-                $stmt_quarterly_sales->bind_param("i", $user_id);
-                $stmt_quarterly_sales->execute();
-                $quarterly_sales_result = $stmt_quarterly_sales->get_result();
-                $stmt_quarterly_sales->close();
+                <div class="card-body">
+                    <h2 class="mb-4">ข้อมูลยอดขายของคุณ</h2>
+                    <h4 class="fw-bold text-dark mb-0">
+                        ยอดขายรวมทั้งหมด: <?= number_format($total_sales_result->fetch_assoc()['total_sales'], 2) ?> บาท
+                    </h4>
+                </div>
+            </div>
+        </div>
+    </div>
 
-                if ($quarterly_sales_result->num_rows > 0):
-                    while ($row = $quarterly_sales_result->fetch_assoc()):
-                ?>
-                    <tr>
-                        <td><?= htmlspecialchars($row['year']) ?></td>
-                        <td><?= $quarter_to_month[$row['quarter']] ?></td>
-                        <td><?= number_format($row['total_amount'], 2) ?></td>
-                    </tr>
-                <?php endwhile; else: ?>
-                    <tr>
-                        <td colspan="4" class="text-center">ไม่มีข้อมูลยอดขายตามไตรมาส</td>
-                    </tr>
-                <?php endif; ?>
-            </tbody>
-          </table>
-        </div>
+    <!--  ตารางยอดขายตามปี -->
+    <div class="row mb-4">
+        <div class="col-md-12">
+            <div class="card shadow-sm">
+                <div class="card-body">
+                    <h5 class="mb-3">ยอดขายรวมแยกตามปี</h5>
+                    <div class="table-responsive">
+                        <table id="tabledata" class="table table-striped table-bordered">
+                            <thead style="font-size: small;">
+                                <tr>
+                                    <th>ปี</th>
+                                    <th>ยอดขายรวม (บาท)</th>
+                                    <th>ดูข้อมูล</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <?php if ($yearly_sales_result->num_rows > 0): ?>
+                                    <?php while ($row = $yearly_sales_result->fetch_assoc()): ?>
+                                        <tr>
+                                            <td><?= htmlspecialchars($row['year']) ?></td>
+                                            <td><?= number_format($row['total_sales'], 2) ?> บาท</td>
+                                            <td>
+                                                <a href="sales_details_by_year.php?year=<?= $row['year'] ?>" class="btn btn-sm btn-info">
+                                                    ดูข้อมูล
+                                                </a>
+                                            </td>
+                                        </tr>
+                                    <?php endwhile; ?>
+                                <?php else: ?>
+                                    <tr>
+                                        <td colspan="3" class="text-center">ไม่มีข้อมูลยอดขาย</td>
+                                    </tr>
+                                <?php endif; ?>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
             </div>
-            </div>
-                </div></br>
-        <a href="employee_dashboard.php" class="btn btn-secondary">กลับไปยังหน้าหลัก</a>
-                </br></br>
         </div>
+    </div>
+
+    <!-- ตารางยอดขายตามไตรมาส -->
+    <div class="row mb-5">
+        <div class="col-md-12">
+            <div class="card shadow-sm">
+                <div class="card-body">
+                    <h5 class="mb-3">ข้อมูลยอดขายตามไตรมาส</h5>
+                    <div class="table-responsive">
+                        <table id="tabledata1" class="table table-striped table-bordered">
+                            <thead style="font-size: small;">
+                                <tr>
+                                    <th>ปี</th>
+                                    <th>ไตรมาส</th>
+                                    <th>ยอดขาย (บาท)</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <?php
+                                $sql_quarterly_sales = "SELECT year, quarter, SUM(amount) AS total_amount
+                                                        FROM sales
+                                                        WHERE user_id = ?
+                                                        GROUP BY year, quarter
+                                                        ORDER BY year DESC, quarter ASC";
+                                $stmt_quarterly_sales = $conn->prepare($sql_quarterly_sales);
+                                $stmt_quarterly_sales->bind_param("i", $user_id);
+                                $stmt_quarterly_sales->execute();
+                                $quarterly_sales_result = $stmt_quarterly_sales->get_result();
+                                $stmt_quarterly_sales->close();
+
+                                if ($quarterly_sales_result->num_rows > 0):
+                                    while ($row = $quarterly_sales_result->fetch_assoc()):
+                                ?>
+                                    <tr>
+                                        <td><?= htmlspecialchars($row['year']) ?></td>
+                                        <td><?= $quarter_to_month[$row['quarter']] ?></td>
+                                        <td><?= number_format($row['total_amount'], 2) ?> บาท</td>
+                                    </tr>
+                                <?php endwhile; else: ?>
+                                    <tr>
+                                        <td colspan="3" class="text-center">ไม่มีข้อมูลยอดขายตามไตรมาส</td>
+                                    </tr>
+                                <?php endif; ?>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!--  ตารางยอดขายรายเดือน -->
+<div class="row mb-5">
+    <div class="col-md-12">
+        <div class="card shadow-sm">
+            <div class="card-body">
+                <h5 class="mb-3">ข้อมูลยอดขายรายเดือน</h5>
+                <div class="table-responsive">
+                    <table class="table table-striped table-bordered">
+                        <thead style="font-size: small;">
+                            <tr>
+                                <th>ปี</th>
+                                <th>เดือน</th>
+                                <th>ยอดขาย (บาท)</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <?php if ($monthly_sales_result->num_rows > 0): ?>
+                                <?php while ($row = $monthly_sales_result->fetch_assoc()): ?>
+                                    <tr>
+                                        <td><?= htmlspecialchars($row['year']) ?></td>
+                                        <td><?= $month_names[intval($row['month'])] ?></td>
+                                        <td><?= number_format($row['total_amount'], 2) ?> บาท</td>
+                                    </tr>
+                                <?php endwhile; ?>
+                            <?php else: ?>
+                                <tr>
+                                    <td colspan="3" class="text-center">ไม่มีข้อมูลยอดขายรายเดือน</td>
+                                </tr>
+                            <?php endif; ?>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+</div> <!-- /.container -->
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.0.2/dist/js/bootstrap.bundle.min.js" integrity="sha384-MrcW6ZMFYlzcLA8Nl+NtUVF0sA7MsXsP1UyJoMp4YLEuNSfAP+JcXn/tWtIaxVXM" crossorigin="anonymous"></script>
     <script src="https://code.jquery.com/jquery-3.7.0.min.js"></script>

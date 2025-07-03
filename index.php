@@ -36,6 +36,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="ระบบจัดการยอดขาย Martha Group.">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons/font/bootstrap-icons.css" rel="stylesheet">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/css/bootstrap.min.css" rel="stylesheet">
     <title>เข้าสู่ระบบ</title>
@@ -88,7 +89,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
         <div class="card shadow-lg p-4" style="width: 100%; max-width: 400px;">
             <!-- โลโก้ระบบ -->
             <div class="text-center mb-3">
-                <img src="img/logo.png" alt="โลโก้ระบบ" width="80">
+                <img src="https://martha-group.com/PIC/LogoMartha380px.png" alt="Logo" width="250"> </br></br>
                 <h4 class="mt-2">ระบบจัดการยอดขาย</h4>
             </div>
             <!-- ข้อความต้อนรับ -->

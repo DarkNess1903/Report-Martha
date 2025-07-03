@@ -221,33 +221,39 @@ $conn->close();
     <?php include 'topnavbar.php'; ?>
 
     <div class="container mt-5 mb-5">
-        <?php if (!empty($errorMsg)) : ?>
-            <div class="alert alert-warning text-center"><?= $errorMsg ?></div>
-        <?php endif; ?>
+    <?php if (!empty($errorMsg)) : ?>
+        <div class="alert alert-warning text-center py-2">
+            <?= htmlspecialchars($errorMsg) ?>
+        </div>
+    <?php endif; ?>
 
-        <!-- ฟอร์มเลือกปีเปรียบเทียบ -->
-        <form method="GET" class="row g-2 align-items-center justify-content-center mb-3">
-            <div class="col-12 col-md-auto">
-                <label for="year1" class="form-label mb-0">ปีที่ 1:</label>
-                <select name="year1" id="year1" class="form-select">
-                    <?php foreach ($yearsAvailable as $y): ?>
-                        <option value="<?= $y ?>" <?= $y == $year1 ? 'selected' : '' ?>><?= $y ?></option>
-                    <?php endforeach; ?>
-                </select>
-            </div>
-            <div class="col-12 col-md-auto">
-                <label for="year2" class="form-label mb-0">ปีที่ 2:</label>
-                <select name="year2" id="year2" class="form-select">
-                    <?php foreach ($yearsAvailable as $y): ?>
-                        <option value="<?= $y ?>" <?= $y == $year2 ? 'selected' : '' ?>><?= $y ?></option>
-                    <?php endforeach; ?>
-                </select>
-            </div>
-            <div class="col-12 col-md-auto">
-                <button type="submit" class="btn btn-primary w-100">เปรียบเทียบ</button>
-            </div>
-        </form>
+    <!-- ฟอร์มเลือกปีเปรียบเทียบ -->
+    <form method="GET" class="row g-3 align-items-end justify-content-center mb-4">
+        <div class="col-12 col-md-3">
+            <label for="year1" class="form-label fw-semibold mb-1">ปีที่ 1</label>
+            <select name="year1" id="year1" class="form-select form-select-sm">
+                <?php foreach ($yearsAvailable as $y): ?>
+                    <option value="<?= htmlspecialchars($y) ?>" <?= $y == $year1 ? 'selected' : '' ?>><?= htmlspecialchars($y) ?></option>
+                <?php endforeach; ?>
+            </select>
+        </div>
 
+        <div class="col-12 col-md-3">
+            <label for="year2" class="form-label fw-semibold mb-1">ปีที่ 2</label>
+            <select name="year2" id="year2" class="form-select form-select-sm">
+                <?php foreach ($yearsAvailable as $y): ?>
+                    <option value="<?= htmlspecialchars($y) ?>" <?= $y == $year2 ? 'selected' : '' ?>><?= htmlspecialchars($y) ?></option>
+                <?php endforeach; ?>
+            </select>
+        </div>
+
+        <div class="col-12 col-md-2 d-grid">
+            <button type="submit" class="btn btn-primary btn-sm">
+                เปรียบเทียบ
+            </button>
+        </div>
+    </form>
+    
         <!-- หัวข้อ -->
         <h5 class="fw-bold text-center mb-3">
             เปรียบเทียบยอดขายรายเดือน (ปี <?= $year1 ?> vs <?= $year2 ?>)

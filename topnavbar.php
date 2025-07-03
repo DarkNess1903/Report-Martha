@@ -1,7 +1,7 @@
-<nav class="navbar navbar-expand-lg navbar-dark bg-primary shadow-sm">
+<nav class="navbar navbar-expand-lg navbar-dark shadow-sm" style="background-color: #1d1ca1;">
     <div class="container">
         <!-- โลโก้ -->
-        <a class="navbar-brand fw-bold text-white" href="#">Martha groupsales</a>
+        <a class="navbar-brand fw-bold text-white" href="#">Martha Group Sales</a>
         
         <!-- ปุ่มสำหรับเปิดเมนูบนมือถือ -->
         <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav" aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">

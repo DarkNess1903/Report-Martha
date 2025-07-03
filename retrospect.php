@@ -98,8 +98,10 @@ while ($row = $result->fetch_assoc()) {
 $top_5_products = array_slice($top_products, 0, 5);
 $bottom_5_products = array_slice(array_reverse($top_products), 0, 5);
 
-$stmt->close();
+// ยอดขายรวมทั้งปี
+$total_sales_year = array_sum($monthly_data);
 
+$stmt->close();
 $conn->close();
 ?>
 
@@ -154,6 +156,12 @@ $conn->close();
                     </select>
                 </div>
             </form>
+            <!-- แสดงยอดขายรวมของปี -->
+            <div class="mt-3 text-center">
+                <h4 class="fw-bold text-success">
+                    ยอดขายรวมปี <?= $selected_year ?>: <?= number_format($total_sales_year, 2) ?> บาท
+                </h4>
+            </div>
         </div>
     </div>
 
