@@ -111,139 +111,158 @@ $conn->close();
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/css/bootstrap.min.css" rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <style>
+    /* เอฟเฟกต์เบลอพื้นหลังเมื่อเปิด modal */
+    .modal-backdrop.show {
+        backdrop-filter: blur(4px);
+    }
+
+    /* ปรับปุ่มปิดให้มี hover effect */
+    .btn-close:hover {
+        transform: scale(1.1);
+    }
+
+    /* ปรับความโค้งและเงาใน canvas */
+    #fullScreenChart {
+        border-radius: 8px;
+        box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+        padding: 10px;
+        background-color: white;
+    }
+</style>
+
 </head>
 <body>
     <!-- Include Top Navbar -->
     <?php include 'topnavbar.php'; ?>
 
-    <div class="container mt-5">
-        <h2 class="text-center mb-4">แดชบอร์ดยอดขาย</h2>
+<div class="container mt-5">
+    <h2 class="text-center mb-4">แดชบอร์ดยอดขาย</h2>
 
-        <!-- ฟอร์มเลือกปี -->
-        <div class="card shadow-sm mb-4">
-            <div class="card-body">
-                <form method="get" class="row align-items-center">
-                    <div class="col-md-3">
-                        <label for="yearSelect" class="form-label fw-bold">เลือกปี:</label>
-                    </div>
-                    <div class="col-md-6">
-                        <select name="year" id="yearSelect" class="form-select" onchange="this.form.submit()">
-                            <?php foreach ($years as $year): ?>
-                                <option value="<?= $year ?>" <?= $year == $selected_year ? 'selected' : '' ?>><?= $year ?></option>
-                            <?php endforeach; ?>
-                        </select>
-                    </div>
-                </form>
-            </div>
+    <!-- ฟอร์มเลือกปี -->
+    <div class="card shadow-sm mb-4">
+        <div class="card-body">
+            <form method="get" class="row align-items-center">
+                <div class="col-md-3">
+                    <label for="yearSelect" class="form-label fw-bold">เลือกปี:</label>
+                </div>
+                <div class="col-md-6">
+                    <select name="year" id="yearSelect" class="form-select" onchange="this.form.submit()">
+                        <?php foreach ($years as $year): ?>
+                            <option value="<?= $year ?>" <?= $year == $selected_year ? 'selected' : '' ?>><?= $year ?></option>
+                        <?php endforeach; ?>
+                    </select>
+                </div>
+            </form>
         </div>
+    </div>
 
-        <div class="row mb-4">
-            <!-- กราฟยอดขายตามช่วงเวลา -->
-            <div class="col-md-6 mb-4">
-                <div class="card shadow-sm h-100">
-                    <div class="card-body">
-                        <h5 class="card-title text-center">ยอดขายตามช่วงเวลา</h5>
-
-                        <div class="row align-items-center mb-3">
-                            <div class="col-8">
-                                <label for="timePeriodSelect" class="form-label mb-1">เลือกช่วงเวลา:</label>
-                                <select id="timePeriodSelect" class="form-select form-select-sm">
-                                    <option value="monthly">รายเดือน</option>
-                                    <option value="quarterly">รายไตรมาส</option>
-                                </select>
-                            </div>
-                            <div class="col-4 text-end mt-4">
-                                <button type="button" class="btn btn-sm btn-outline-primary" onclick="showFullScreenChart('timePeriodChart')">
-                                    <i class="fas fa-expand"></i> ขยาย
-                                </button>
-                            </div>
-                        </div>
-
-                        <canvas id="timePeriodChart"></canvas>
+    <!-- 1. กราฟยอดขายพนักงาน -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card shadow-sm">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-center mb-2">
+                        <h5 class="mb-0">ยอดขายพนักงาน ปี <?= $selected_year ?></h5>
+                        <button type="button" class="btn btn-sm btn-outline-primary" onclick="showFullScreenChart('employeeSalesChart')">
+                            <i class="fas fa-expand"></i> ขยาย
+                        </button>
                     </div>
+                    <canvas id="employeeSalesChart" height="150"></canvas>
                 </div>
             </div>
+        </div>
+    </div>
 
-            <!-- กราฟยอดขายรายสินค้า -->
-            <div class="col-md-6 mb-4">
-                <div class="card shadow-sm h-100">
-                    <div class="card-body">
-                        <h5 class="card-title text-center">ยอดขายแยกตามสินค้า</h5>
-
-                        <div class="d-flex justify-content-end mb-3">
-                            <button type="button" class="btn btn-sm btn-outline-primary" onclick="showFullScreenChart('productChart')">
+    <!-- 2. กราฟยอดขายตามช่วงเวลา -->
+    <div class="row mb-4">
+        <div class="col-md-6 mb-4">
+            <div class="card shadow-sm h-100">
+                <div class="card-body">
+                    <h5 class="card-title text-center">ยอดขายตามช่วงเวลา</h5>
+                    <div class="row align-items-center mb-3">
+                        <div class="col-8">
+                            <label for="timePeriodSelect" class="form-label mb-1">เลือกช่วงเวลา:</label>
+                            <select id="timePeriodSelect" class="form-select form-select-sm">
+                                <option value="monthly">รายเดือน</option>
+                                <option value="quarterly">รายไตรมาส</option>
+                            </select>
+                        </div>
+                        <div class="col-4 text-end mt-4">
+                            <button type="button" class="btn btn-sm btn-outline-primary" onclick="showFullScreenChart('timePeriodChart')">
                                 <i class="fas fa-expand"></i> ขยาย
                             </button>
                         </div>
-
-                        <canvas id="productChart"></canvas>
                     </div>
+                    <canvas id="timePeriodChart"></canvas>
                 </div>
             </div>
         </div>
 
-        <!-- กราฟอันดับสินค้า -->
-        <div class="row">
-            <div class="col-md-6 mb-4">
-                <div class="card shadow-sm p-3 h-100 position-relative">
+        <!-- 3. กราฟ stacked bar ยอดขายสินค้า -->
+        <div class="col-md-6 mb-4">
+            <div class="card shadow-sm h-100">
+                <div class="card-body">
+                    <h5 class="card-title text-center">ยอดขายแยกตามสินค้า (แบบแท่งซ้อน)</h5>
                     <div class="d-flex justify-content-end mb-3">
-                        <button type="button" class="btn btn-sm btn-outline-primary" onclick="showFullScreenChart('topProductsChart')">
+                        <button type="button" class="btn btn-sm btn-outline-primary" onclick="showFullScreenChart('productChart')">
                             <i class="fas fa-expand"></i> ขยาย
                         </button>
                     </div>
-                    <h5 class="text-center">สินค้าขายดี 5 อันดับ</h5>
-                    <canvas id="topProductsChart"></canvas>
-                </div>
-            </div>
-
-            <div class="col-md-6 mb-4">
-                <div class="card shadow-sm p-3 h-100 position-relative">
-                    <div class="d-flex justify-content-end mb-3">
-                        <button type="button" class="btn btn-sm btn-outline-primary" onclick="showFullScreenChart('bottomProductsChart')">
-                            <i class="fas fa-expand"></i> ขยาย
-                        </button>
-                    </div>
-                    <h5 class="text-center">สินค้าขายไม่ดี 5 อันดับ</h5>
-                    <canvas id="bottomProductsChart"></canvas>
+                    <canvas id="productChart" height="300"></canvas>
                 </div>
             </div>
         </div>
+    </div>
 
-        <!-- กราฟยอดขายพนักงาน -->
-        <div class="row">
-            <div class="col-12 mb-4">
-                <div class="card shadow-sm">
-                    <div class="card-body">
-                        <div class="col-md-12 mb-4 chart-container">
-                            <div class="d-flex justify-content-between align-items-center mb-2">
-                                <h5 class="mb-0">ยอดขายพนักงาน ปี <?= $selected_year ?></h5>
-                                <button type="button" class="btn btn-sm btn-outline-primary" onclick="showFullScreenChart('employeeSalesChart')">
-                                    <i class="fas fa-expand"></i> ขยาย
-                                </button>
-                            </div>
-                            <canvas id="employeeSalesChart" height="150"></canvas>
-                        </div>
-                    </div>
+    <!-- 4. กราฟอันดับสินค้า -->
+    <div class="row mb-4">
+        <!-- ขายดี -->
+        <div class="col-md-6">
+            <div class="card shadow-sm p-3 h-100 position-relative">
+                <div class="d-flex justify-content-end mb-3">
+                    <button type="button" class="btn btn-sm btn-outline-primary" onclick="showFullScreenChart('topProductsChart')">
+                        <i class="fas fa-expand"></i> ขยาย
+                    </button>
                 </div>
+                <h5 class="text-center">สินค้าขายดี 5 อันดับ</h5>
+                <canvas id="topProductsChart"></canvas>
             </div>
         </div>
 
-        <!-- Modal สำหรับแสดงกราฟเต็มจอ -->
-        <div class="modal fade" id="chartModal" tabindex="-1" aria-labelledby="chartModalLabel" aria-hidden="true">
-            <div class="modal-dialog modal-xl modal-dialog-centered modal-fullscreen-sm-down">
-                <div class="modal-content bg-white">
-                    <div class="modal-header">
-                        <h5 class="modal-title fw-bold fs-4" id="chartModalLabel">กราฟแบบขยาย</h5>
-                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="ปิด"></button>
-                    </div>
-                    <div class="modal-body p-0">
-                        <div class="w-100" style="height: 80vh; min-height: 300px;">
-                            <canvas id="fullScreenChart" style="width:100%; height:100%;"></canvas>
-                        </div>
-                    </div>
+        <!-- ขายไม่ดี -->
+        <div class="col-md-6">
+            <div class="card shadow-sm p-3 h-100 position-relative">
+                <div class="d-flex justify-content-end mb-3">
+                    <button type="button" class="btn btn-sm btn-outline-primary" onclick="showFullScreenChart('bottomProductsChart')">
+                        <i class="fas fa-expand"></i> ขยาย
+                    </button>
+                </div>
+                <h5 class="text-center">สินค้าขายไม่ดี 5 อันดับ</h5>
+                <canvas id="bottomProductsChart"></canvas>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal สำหรับแสดงกราฟเต็มจอ -->
+<div class="modal fade" id="chartModal" tabindex="-1" aria-labelledby="chartModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-xl modal-dialog-centered modal-fullscreen-sm-down">
+        <div class="modal-content border-0 shadow-lg rounded-4">
+            <div class="modal-header bg-light border-0 rounded-top-4 px-4">
+                <h5 class="modal-title fw-bold fs-4" id="chartModalLabel">
+                    <i class="fas fa-chart-bar me-2 text-primary"></i> กราฟแบบขยาย
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="ปิด"></button>
+            </div>
+            <div class="modal-body p-3 bg-white">
+                <div class="w-100 rounded-3" style="height: 80vh; min-height: 300px;">
+                    <canvas id="fullScreenChart" style="width: 100%; height: 100%;"></canvas>
                 </div>
             </div>
         </div>
+    </div>
+</div>
 
 <script>
     // แปลงข้อมูลจาก PHP มาเป็น JavaScript object
@@ -275,19 +294,53 @@ $conn->close();
         }
     });
 
-    // กราฟยอดขายรายสินค้า
     const ctxProduct = document.getElementById('productChart').getContext('2d');
     const productChart = new Chart(ctxProduct, {
-        type: 'line',
+        type: 'bar',
         data: {
-            labels: monthLabels,
+            labels: monthLabels, // ["ม.ค.", "ก.พ.", ..., "ธ.ค."]
             datasets: Object.keys(productData).map((product, i) => ({
                 label: product,
                 data: Array.from({ length: 12 }, (_, m) => productData[product][m + 1] || 0),
-                borderColor: `hsl(${(i * 360 / Object.keys(productData).length)}, 70%, 50%)`,
-                fill: false,
-                tension: 0.3  // ทำให้เส้นโค้ง
+                backgroundColor: `hsl(${(i * 360 / Object.keys(productData).length)}, 70%, 50%)`,
+                borderWidth: 1
             }))
+        },
+        options: {
+            responsive: true,
+            plugins: {
+                legend: {
+                    position: 'top',
+                    labels: {
+                        boxWidth: 12,
+                        font: { size: 10 }
+                    }
+                },
+                tooltip: {
+                    mode: 'index',
+                    intersect: false,
+                    callbacks: {
+                        label: ctx => ctx.dataset.label + ': ' + ctx.parsed.y.toLocaleString('th-TH') + ' บาท'
+                    }
+                }
+            },
+            interaction: {
+                mode: 'nearest',
+                axis: 'x',
+                intersect: false
+            },
+            scales: {
+                x: {
+                    stacked: true
+                },
+                y: {
+                    stacked: true,
+                    beginAtZero: true,
+                    ticks: {
+                        callback: value => value.toLocaleString('th-TH') + ' บาท'
+                    }
+                }
+            }
         }
     });
 
@@ -422,62 +475,79 @@ $conn->close();
         const originalChart = Chart.getChart(originalChartId);
         if (!originalChart) return;
 
+        // ทำลายอินสแตนซ์เก่า
         if (fullScreenChartInstance) {
             fullScreenChartInstance.destroy();
         }
 
         const ctx = document.getElementById('fullScreenChart').getContext('2d');
 
-        fullScreenChartInstance = new Chart(ctx, {
-            type: originalChart.config.type,
-            data: JSON.parse(JSON.stringify(originalChart.data)),
-            options: {
-                responsive: true,
-                maintainAspectRatio: false,
-                plugins: {
-                    legend: {
-                        labels: {
-                            font: {
-                                size: 16 // เพิ่มขนาดตัวอักษรของ legend
-                            }
-                        }
-                    },
-                    title: {
-                        display: true,
-                        text: originalChart.options.plugins?.title?.text || 'กราฟ',
-                        font: {
-                            size: 20 // ขนาดหัวข้อกราฟ
-                        }
-                    }
-                },
-                scales: {
-                    x: {
-                        ticks: {
-                            font: {
-                                size: 14 // แกน X
-                            }
-                        }
-                    },
-                    y: {
-                        ticks: {
-                            font: {
-                                size: 14 // แกน Y
-                            }
-                        }
-                    }
+        // สร้างสำเนา config เพื่อไม่กระทบต้นฉบับ
+        const clonedData = JSON.parse(JSON.stringify(originalChart.data));
+        const clonedOptions = JSON.parse(JSON.stringify(originalChart.options || {}));
+
+        // ปรับขนาด legend, tooltip, title, ticks ให้อ่านง่ายบนหน้าจอใหญ่
+        clonedOptions.plugins = clonedOptions.plugins || {};
+        clonedOptions.plugins.legend = {
+            display: true,
+            position: 'top',
+            labels: {
+                font: {
+                    size: 16
                 }
             }
+        };
+        clonedOptions.plugins.tooltip = {
+            mode: 'index',
+            intersect: false,
+            bodyFont: {
+                size: 16
+            },
+            callbacks: originalChart.options.plugins?.tooltip?.callbacks || {}
+        };
+        clonedOptions.plugins.title = {
+            display: true,
+            text: originalChart.options.plugins?.title?.text || 'กราฟ',
+            font: {
+                size: 20,
+                weight: 'bold'
+            },
+            padding: {
+                top: 10,
+                bottom: 20
+            }
+        };
+
+        // ปรับแกน
+        if (clonedOptions.scales) {
+            if (clonedOptions.scales.x?.ticks) {
+                clonedOptions.scales.x.ticks.font = { size: 14 };
+            }
+            if (clonedOptions.scales.y?.ticks) {
+                clonedOptions.scales.y.ticks.font = { size: 14 };
+            }
+        }
+
+        clonedOptions.maintainAspectRatio = false;
+        clonedOptions.responsive = true;
+
+        // สร้างกราฟใหม่
+        fullScreenChartInstance = new Chart(ctx, {
+            type: originalChart.config.type,
+            data: clonedData,
+            options: clonedOptions
         });
 
         const modal = new bootstrap.Modal(document.getElementById('chartModal'));
         modal.show();
     }
 
-
     document.getElementById('chartModal').addEventListener('shown.bs.modal', () => {
-        if (fullScreenChartInstance) {
-            fullScreenChartInstance.resize();
-        }
+        setTimeout(() => {
+            if (fullScreenChartInstance) {
+                fullScreenChartInstance.resize();
+            }
+        }, 200); // รอ modal เปิดก่อนเล็กน้อย
     });
 </script>
 

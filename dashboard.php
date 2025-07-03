@@ -365,22 +365,24 @@ $conn->close();
             </div>
         </div>
 
-           <!-- Modal สำหรับแสดงกราฟเต็มจอ -->
-        <div class="modal fade" id="chartModal" tabindex="-1" aria-labelledby="chartModalLabel" aria-hidden="true">
-            <div class="modal-dialog modal-xl modal-dialog-centered modal-fullscreen-sm-down">
-                <div class="modal-content bg-white">
-                    <div class="modal-header">
-                        <h5 class="modal-title fw-bold fs-4" id="chartModalLabel">กราฟแบบขยาย</h5>
-                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="ปิด"></button>
-                    </div>
-                    <div class="modal-body p-0">
-                        <div class="w-100" style="height: 80vh; min-height: 300px;">
-                            <canvas id="fullScreenChart" style="width:100%; height:100%;"></canvas>
-                        </div>
+    <!-- Modal สำหรับแสดงกราฟเต็มจอ -->
+    <div class="modal fade" id="chartModal" tabindex="-1" aria-labelledby="chartModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-xl modal-dialog-centered modal-fullscreen-sm-down">
+            <div class="modal-content border-0 shadow-lg rounded-4">
+                <div class="modal-header bg-light border-0 rounded-top-4 px-4">
+                    <h5 class="modal-title fw-bold fs-4" id="chartModalLabel">
+                        <i class="fas fa-chart-bar me-2 text-primary"></i> กราฟแบบขยาย
+                    </h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="ปิด"></button>
+                </div>
+                <div class="modal-body p-3 bg-white">
+                    <div class="w-100 rounded-3" style="height: 80vh; min-height: 300px;">
+                        <canvas id="fullScreenChart" style="width: 100%; height: 100%;"></canvas>
                     </div>
                 </div>
             </div>
         </div>
+    </div>
 </body>
 
 <script>
@@ -537,62 +539,79 @@ $conn->close();
         const originalChart = Chart.getChart(originalChartId);
         if (!originalChart) return;
 
+        // ทำลายอินสแตนซ์เก่า
         if (fullScreenChartInstance) {
             fullScreenChartInstance.destroy();
         }
 
         const ctx = document.getElementById('fullScreenChart').getContext('2d');
 
-        fullScreenChartInstance = new Chart(ctx, {
-            type: originalChart.config.type,
-            data: JSON.parse(JSON.stringify(originalChart.data)),
-            options: {
-                responsive: true,
-                maintainAspectRatio: false,
-                plugins: {
-                    legend: {
-                        labels: {
-                            font: {
-                                size: 16 // เพิ่มขนาดตัวอักษรของ legend
-                            }
-                        }
-                    },
-                    title: {
-                        display: true,
-                        text: originalChart.options.plugins?.title?.text || 'กราฟ',
-                        font: {
-                            size: 20 // ขนาดหัวข้อกราฟ
-                        }
-                    }
-                },
-                scales: {
-                    x: {
-                        ticks: {
-                            font: {
-                                size: 14 // แกน X
-                            }
-                        }
-                    },
-                    y: {
-                        ticks: {
-                            font: {
-                                size: 14 // แกน Y
-                            }
-                        }
-                    }
+        // สร้างสำเนา config เพื่อไม่กระทบต้นฉบับ
+        const clonedData = JSON.parse(JSON.stringify(originalChart.data));
+        const clonedOptions = JSON.parse(JSON.stringify(originalChart.options || {}));
+
+        // ปรับขนาด legend, tooltip, title, ticks ให้อ่านง่ายบนหน้าจอใหญ่
+        clonedOptions.plugins = clonedOptions.plugins || {};
+        clonedOptions.plugins.legend = {
+            display: true,
+            position: 'top',
+            labels: {
+                font: {
+                    size: 16
                 }
             }
+        };
+        clonedOptions.plugins.tooltip = {
+            mode: 'index',
+            intersect: false,
+            bodyFont: {
+                size: 16
+            },
+            callbacks: originalChart.options.plugins?.tooltip?.callbacks || {}
+        };
+        clonedOptions.plugins.title = {
+            display: true,
+            text: originalChart.options.plugins?.title?.text || 'กราฟ',
+            font: {
+                size: 20,
+                weight: 'bold'
+            },
+            padding: {
+                top: 10,
+                bottom: 20
+            }
+        };
+
+        // ปรับแกน
+        if (clonedOptions.scales) {
+            if (clonedOptions.scales.x?.ticks) {
+                clonedOptions.scales.x.ticks.font = { size: 14 };
+            }
+            if (clonedOptions.scales.y?.ticks) {
+                clonedOptions.scales.y.ticks.font = { size: 14 };
+            }
+        }
+
+        clonedOptions.maintainAspectRatio = false;
+        clonedOptions.responsive = true;
+
+        // สร้างกราฟใหม่
+        fullScreenChartInstance = new Chart(ctx, {
+            type: originalChart.config.type,
+            data: clonedData,
+            options: clonedOptions
         });
 
         const modal = new bootstrap.Modal(document.getElementById('chartModal'));
         modal.show();
     }
 
-
     document.getElementById('chartModal').addEventListener('shown.bs.modal', () => {
-        if (fullScreenChartInstance) {
-            fullScreenChartInstance.resize();
-        }
+        setTimeout(() => {
+            if (fullScreenChartInstance) {
+                fullScreenChartInstance.resize();
+            }
+        }, 200); // รอ modal เปิดก่อนเล็กน้อย
     });
 </script>
 

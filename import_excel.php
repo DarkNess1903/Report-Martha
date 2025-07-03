@@ -27,22 +27,21 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
         $countInserted = 0;
 
-        // เริ่มวนอ่านข้อมูลจากแถวที่ 2 (ข้ามหัวตาราง)
         foreach ($rows as $index => $row) {
-            if ($index === 0) continue;
+            if ($index === 0) continue; // ข้ามหัวตาราง
 
             $month = intval($row[0]);
             $quarter = intval($row[1]);
-            $product = trim($row[2]);
+            $product = strtoupper(trim($row[2]));
             $amount = floatval($row[3]);
 
-            if ($month < 1 || $month > 12 || $quarter < 1 || $quarter > 4 || $product === '' || $amount <= 0) {
-                // ข้ามแถวข้อมูลที่ไม่ถูกต้อง
+            // ป้องกัน year เป็น 0000 โดยตรวจสอบค่าที่รับมาถูกต้อง
+            if ($month < 1 || $month > 12 || $quarter < 1 || $quarter > 4 || $product === '' || $amount <= 0 || $year < 2000) {
                 continue;
             }
 
-            // ตรวจสอบข้อมูลซ้ำ (ถ้าต้องการ) - ตัวอย่างเช็คก่อน insert
-            $stmtCheck = $conn->prepare("SELECT COUNT(*) FROM sales WHERE user_id=? AND year=? AND month=? AND quarter=? AND product=?");
+            // ตรวจสอบไม่ให้ซ้ำ (case-insensitive ที่ product)
+            $stmtCheck = $conn->prepare("SELECT COUNT(*) FROM sales WHERE user_id=? AND year=? AND month=? AND quarter=? AND UPPER(product)=UPPER(?)");
             $stmtCheck->bind_param("iiiss", $user_id, $year, $month, $quarter, $product);
             $stmtCheck->execute();
             $stmtCheck->bind_result($count);
@@ -58,10 +57,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             }
         }
 
-        // ปิดการเชื่อมต่อฐานข้อมูล
         $conn->close();
 
-        // ส่งกลับพร้อมพารามิเตอร์แจ้งผล
         header("Location: sales_details.php?user_id=$user_id&year=$year&imported=$countInserted");
         exit();
 
