@@ -31,25 +31,34 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             if ($index === 0) continue; // ข้ามหัวตาราง
 
             $month = intval($row[0]);
-            $quarter = intval($row[1]);
-            $product = strtoupper(trim($row[2]));
-            $amount = floatval($row[3]);
+            $product = strtoupper(trim($row[1]));
+            $amount = floatval($row[2]);
 
-            // ป้องกัน year เป็น 0000 โดยตรวจสอบค่าที่รับมาถูกต้อง
-            if ($month < 1 || $month > 12 || $quarter < 1 || $quarter > 4 || $product === '' || $amount <= 0 || $year < 2000) {
+            // ตรวจสอบข้อมูลเบื้องต้น
+            if ($month < 1 || $month > 12 || $product === '' || $amount <= 0 || $year < 2000) {
                 continue;
             }
 
-            // ตรวจสอบไม่ให้ซ้ำ (case-insensitive ที่ product)
-            $stmtCheck = $conn->prepare("SELECT COUNT(*) FROM sales WHERE user_id=? AND year=? AND month=? AND quarter=? AND UPPER(product)=UPPER(?)");
+            // คำนวณไตรมาสจากเดือน
+            $quarter = ceil($month / 3);
+
+            // ตรวจสอบข้อมูลซ้ำ
+            $stmtCheck = $conn->prepare("
+                SELECT COUNT(*) FROM sales 
+                WHERE user_id = ? AND year = ? AND month = ? AND quarter = ? AND UPPER(product) = UPPER(?)
+            ");
             $stmtCheck->bind_param("iiiss", $user_id, $year, $month, $quarter, $product);
             $stmtCheck->execute();
             $stmtCheck->bind_result($count);
             $stmtCheck->fetch();
             $stmtCheck->close();
 
+            // ถ้าไม่ซ้ำ ให้เพิ่มข้อมูล
             if ($count == 0) {
-                $stmtInsert = $conn->prepare("INSERT INTO sales (user_id, year, month, quarter, product, amount) VALUES (?, ?, ?, ?, ?, ?)");
+                $stmtInsert = $conn->prepare("
+                    INSERT INTO sales (user_id, year, month, quarter, product, amount) 
+                    VALUES (?, ?, ?, ?, ?, ?)
+                ");
                 $stmtInsert->bind_param("iiiisd", $user_id, $year, $month, $quarter, $product, $amount);
                 $stmtInsert->execute();
                 $stmtInsert->close();
@@ -58,13 +67,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
 
         $conn->close();
-
         header("Location: sales_details.php?user_id=$user_id&year=$year&imported=$countInserted");
         exit();
 
     } catch (Exception $e) {
         die('เกิดข้อผิดพลาดในการอ่านไฟล์ Excel: ' . $e->getMessage());
     }
+
 } else {
     header('Location: sales_details.php');
     exit();
