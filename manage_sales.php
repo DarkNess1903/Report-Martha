@@ -7,13 +7,18 @@ if (!isset($_SESSION['user_id']) || $_SESSION['role'] != 'admin') {
     header('Location: login.php');
     exit();
 }
-$year_result = $conn->query("SELECT DISTINCT year FROM sales ORDER BY year DESC");
-$years = [];
-while ($row = $year_result->fetch_assoc()) {
-    $years[] = $row['year'];
-}
-$selected_year = isset($_GET['year']) ? intval($_GET['year']) : date("Y");
 
+// ✅ สร้างรายการปีเอง (เปลี่ยนตามต้องการ)
+$currentYear = date("Y");
+$startYear = 2023; // ปีเริ่มต้น
+$endYear = $currentYear + 2; // ปีอนาคต เช่น ล่วงหน้า 2 ปี
+
+$years = range($endYear, $startYear); // เรียงจากมากไปน้อย
+
+// รับค่าปีที่เลือกจาก GET หรือใช้ปีปัจจุบัน
+$selected_year = isset($_GET['year']) ? intval($_GET['year']) : $currentYear;
+
+// ดึงยอดขายพนักงานในปีที่เลือก
 $sql = "SELECT users.id, users.username, 
                COALESCE(SUM(sales.amount), 0) AS total_sales 
         FROM users 
@@ -113,7 +118,6 @@ $result = $conn->query($sql);
          </div>
              </div>
     </div>
-    </br></br>
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.0.2/dist/js/bootstrap.bundle.min.js" integrity="sha384-MrcW6ZMFYlzcLA8Nl+NtUVF0sA7MsXsP1UyJoMp4YLEuNSfAP+JcXn/tWtIaxVXM" crossorigin="anonymous"></script>
 <script src="https://code.jquery.com/jquery-3.7.0.min.js"></script>
