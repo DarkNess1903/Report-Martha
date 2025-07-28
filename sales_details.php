@@ -131,6 +131,53 @@ $total_row = $total_result->fetch_assoc();
 $total_sales = $total_row['total_sales'] ?? 0;
 $stmt_total->close();
 
+// ดึงยอดขายรวมรายเดือนของพนักงานในปีที่เลือก
+$sql_monthly = "SELECT month, SUM(amount) AS total_amount 
+                FROM sales 
+                WHERE user_id = ? AND year = ? 
+                GROUP BY month
+                ORDER BY month ASC";
+$stmt_monthly = $conn->prepare($sql_monthly);
+$stmt_monthly->bind_param("ii", $user_id, $selected_year);
+$stmt_monthly->execute();
+$result_monthly = $stmt_monthly->get_result();
+
+$monthly_sales = array_fill(1, 12, 0.0);
+while ($row = $result_monthly->fetch_assoc()) {
+    $m = intval($row['month']);
+    if ($m >= 1 && $m <= 12) {
+        $monthly_sales[$m] = floatval($row['total_amount']);
+    }
+}
+$stmt_monthly->close();
+
+$growth_percent = [];
+for ($i = 1; $i <= 12; $i++) {
+    if ($i == 1) {
+        $growth_percent[$i] = 0;
+    } else {
+        $prev = $monthly_sales[$i - 1];
+        $curr = $monthly_sales[$i];
+        if ($prev == 0) {
+            $growth_percent[$i] = 0;
+        } else {
+            $growth_percent[$i] = (($curr - $prev) / $prev) * 100;
+        }
+    }
+}
+
+// ฟังก์ชันแปลงตัวเลขเป็นตัวย่อ (เช่น 1.2K, 3.5M)
+function formatSalesShort($number) {
+    if ($number >= 1000000000) {
+        return number_format($number / 1000000000, 2) . 'B';
+    } elseif ($number >= 1000000) {
+        return number_format($number / 1000000, 2) . 'M';
+    } elseif ($number >= 1000) {
+        return number_format($number / 1000, 2) . 'K';
+    } else {
+        return number_format($number, 2);
+    }
+}
 ?>
 
 <!DOCTYPE html>
@@ -402,12 +449,50 @@ $stmt_total->close();
     </div>
 
     <div class="row">
-    <!-- ✅ แสดงยอดขายรวม -->
+    <!--  แสดงยอดขายรวม -->
     <div class="col-md-12 mb-3">
         <div class="alert alert-info text-center fw-bold fs-5">
             ยอดขายรวมทั้งหมดในปี <?= $selected_year ?>: <?= number_format($total_sales, 2) ?> บาท
         </div>
     </div>
+
+    <!-- แสดงตารางยอดขายและเปอร์เซ็นต์การเติบโต -->
+    
+<table class="table table-bordered table-striped mt-4 text-center">
+    <thead>
+        <tr>
+            <th>ข้อมูล</th>
+            <?php for ($month = 1; $month <= 12; $month++): ?>
+                <th><?= $monthNames[$month] ?></th>
+            <?php endfor; ?>
+        </tr>
+    </thead>
+    <tbody>
+        <tr>
+            <td><strong>ยอดขาย (บาท)</strong></td>
+            <?php for ($month = 1; $month <= 12; $month++): ?>
+                <td><?= formatSalesShort($monthly_sales[$month]) ?></td>
+            <?php endfor; ?>
+        </tr>
+        <tr>
+            <td><strong>เปอร์เซ็นต์เติบโต (%)</strong></td>
+            <?php for ($month = 1; $month <= 12; $month++): ?>
+                <td>
+                    <?php 
+                    $growth = $growth_percent[$month];
+                    if ($growth > 0) {
+                        echo '<span style="color:green;">+' . number_format($growth, 2) . '%</span>';
+                    } elseif ($growth < 0) {
+                        echo '<span style="color:red;">' . number_format($growth, 2) . '%</span>';
+                    } else {
+                        echo number_format($growth, 2) . '%';
+                    }
+                    ?>
+                </td>
+            <?php endfor; ?>
+        </tr>
+    </tbody>
+</table>
 
     <!-- กราฟยอดขายสินค้า -->
     <div class="col-md-6 mb-4">
@@ -565,7 +650,7 @@ const pastelBorders = [
 const backgroundColors = productLabels.map((_, i) => pastelColors[i % pastelColors.length]);
 const borderColors = productLabels.map((_, i) => pastelBorders[i % pastelBorders.length]);
 
-// 🔵 กราฟแท่ง: ยอดขายสินค้าแต่ละตัว
+//  กราฟแท่ง: ยอดขายสินค้าแต่ละตัว
 new Chart(document.getElementById("salesChart"), {
     type: "bar",
     data: {
@@ -603,7 +688,7 @@ new Chart(document.getElementById("salesChart"), {
 });
 
 
-// 🟢 กราฟเส้น: ยอดขายรวมทุกช่วงเวลา
+//  กราฟเส้น: ยอดขายรวมทุกช่วงเวลา
 new Chart(document.getElementById("totalSalesChart"), {
     type: "line",
     data: {

@@ -10,7 +10,7 @@ if (!isset($_SESSION['user_id']) || $_SESSION['role'] != 'admin') {
 
 // ✅ สร้างรายการปีเอง (เปลี่ยนตามต้องการ)
 $currentYear = date("Y");
-$startYear = 2023; // ปีเริ่มต้น
+$startYear = 2022; // ปีเริ่มต้น
 $endYear = $currentYear + 2; // ปีอนาคต เช่น ล่วงหน้า 2 ปี
 
 $years = range($endYear, $startYear); // เรียงจากมากไปน้อย

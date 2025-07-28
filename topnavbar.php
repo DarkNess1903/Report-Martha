@@ -18,7 +18,7 @@
                             <a class="nav-link text-white" href="dashboard.php">หน้าแรก</a>
                         </li>
                         <li class="nav-item">
-                            <a class="nav-link text-white" href="retrospect.php">แดชบอร์ดยอดขาย</a>
+                            <a class="nav-link text-white" href="retrospect.php">เปรียบเทียบยอดขาย</a>
                         </li>
                         <li class="nav-item">
                             <a class="nav-link text-white" href="manage_sales.php">จัดการยอดขาย</a>
