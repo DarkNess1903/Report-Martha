@@ -234,7 +234,7 @@ $conn->close();
         <div class="col-md-6 mb-4">
             <div class="card shadow-sm h-100">
                 <div class="card-body">
-                    <h5 class="card-title text-center">ยอดขายแยกตามสินค้า (แบบแท่งซ้อน)</h5>
+                    <h5 class="card-title text-center">ยอดขายแยกตามสินค้า</h5>
                     <div class="d-flex justify-content-end mb-3">
                         <button type="button" class="btn btn-sm btn-outline-primary" onclick="showFullScreenChart('productChart')">
                             <i class="fas fa-expand"></i> ขยาย
@@ -326,14 +326,18 @@ $conn->close();
     });
 
     const ctxProduct = document.getElementById('productChart').getContext('2d');
+    const productNames = Object.keys(productData);
+
     const productChart = new Chart(ctxProduct, {
         type: 'bar',
         data: {
             labels: monthLabels, // ["ม.ค.", "ก.พ.", ..., "ธ.ค."]
-            datasets: Object.keys(productData).map((product, i) => ({
+            datasets: productNames.map((product, i) => ({
                 label: product,
                 data: Array.from({ length: 12 }, (_, m) => productData[product][m + 1] || 0),
-                backgroundColor: `hsl(${(i * 360 / Object.keys(productData).length)}, 70%, 50%)`,
+                // สีพาสเทล
+                backgroundColor: `hsl(${(i * 360 / productNames.length)}, 50%, 80%)`,
+                borderColor: `hsl(${(i * 360 / productNames.length)}, 50%, 70%)`,
                 borderWidth: 1
             }))
         },
@@ -361,15 +365,23 @@ $conn->close();
                 intersect: false
             },
             scales: {
-                x: {
-                    stacked: true
-                },
+                x: { stacked: true },
                 y: {
                     stacked: true,
                     beginAtZero: true,
                     ticks: {
                         callback: value => value.toLocaleString('th-TH') + ' บาท'
                     }
+                }
+            },
+            onClick: (event, elements) => {
+                if (elements.length > 0) {
+                    const monthIndex = elements[0].index; // ตำแหน่งเดือนที่คลิก (0-11)
+                    const monthNumber = monthIndex + 1;   // แปลงเป็น 1-12
+                    const year = <?= $selected_year ?>;   // ดึงค่าปีจาก PHP
+
+                    // ไปหน้าแสดงสินค้าของเดือนนั้น
+                    window.location.href = `sales_by_month.php?year=${year}&month=${monthNumber}`;
                 }
             }
         }

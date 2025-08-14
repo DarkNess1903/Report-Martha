@@ -166,7 +166,6 @@ for ($i = 1; $i <= 12; $i++) {
     }
 }
 
-// ฟังก์ชันแปลงตัวเลขเป็นตัวย่อ (เช่น 1.2K, 3.5M)
 function formatSalesShort($number) {
     if ($number >= 1000000000) {
         return number_format($number / 1000000000, 2) . 'B';
@@ -237,11 +236,157 @@ function formatSalesShort($number) {
     <?php include 'topnavbar.php'; ?>
     
     <div class="container mt-5">
+        <h2 class="text-center mb-4">รายงานยอดขาย</h2>
+
+    <!-- เลือกเวลา -->
+    <div class="card p-3 mb-4 text-center">
+        <div class="d-flex justify-content-center align-items-center flex-wrap">
+            <label for="timePeriodSelect" class="form-label fw-bold me-3">เลือกช่วงเวลา:</label>
+            <select id="timePeriodSelect" class="form-select w-auto" onchange="updateTimePeriod()">
+                <option value="monthly" <?= ($timePeriod == 'monthly') ? 'selected' : '' ?>>รายเดือน</option>
+                <option value="quarterly" <?= ($timePeriod == 'quarterly') ? 'selected' : '' ?>>รายไตรมาส</option>
+            </select>
+        </div>
+    </div>
+
+    <div class="row">
+    <!--  แสดงยอดขายรวม -->
+    <div class="col-md-12 mb-3">
+        <div class="alert alert-info text-center fw-bold fs-5">
+            ยอดขายรวมทั้งหมด <?= htmlspecialchars($employee_name) ?> ปี <?= $selected_year ?>: <?= number_format($total_sales, 2) ?> บาท
+        </div>
+    </div>
+
+    <!-- แสดงตารางยอดขายและเปอร์เซ็นต์การเติบโต -->
+    
+<table class="table table-bordered table-striped mt-4 text-center">
+    <thead>
+        <tr>
+            <th>ข้อมูล</th>
+            <?php for ($month = 1; $month <= 12; $month++): ?>
+                <th><?= $monthNames[$month] ?></th>
+            <?php endfor; ?>
+        </tr>
+    </thead>
+    <tbody>
+        <tr>
+            <td><strong>ยอดขาย (บาท)</strong></td>
+            <?php for ($month = 1; $month <= 12; $month++): ?>
+                <td><?= formatSalesShort($monthly_sales[$month]) ?></td>
+            <?php endfor; ?>
+        </tr>
+        <tr>
+            <td><strong>เปอร์เซ็นต์เติบโต (%)</strong></td>
+            <?php for ($month = 1; $month <= 12; $month++): ?>
+                <td>
+                    <?php 
+                    $growth = $growth_percent[$month];
+                    if ($growth > 0) {
+                        echo '<span style="color:green;">+' . number_format($growth, 2) . '%</span>';
+                    } elseif ($growth < 0) {
+                        echo '<span style="color:red;">' . number_format($growth, 2) . '%</span>';
+                    } else {
+                        echo number_format($growth, 2) . '%';
+                    }
+                    ?>
+                </td>
+            <?php endfor; ?>
+        </tr>
+    </tbody>
+</table>
+
+    <!-- กราฟยอดขายสินค้า -->
+    <div class="col-md-6 mb-4">
+        <div class="card shadow-sm p-3 h-100 position-relative">
+            <button class="btn btn-sm btn-outline-primary position-absolute top-0 end-0 m-2"
+                onclick="showFullScreenChart('salesChart')">
+                <i class="fas fa-expand"></i> ขยาย
+            </button>
+            <h5 class="text-center mt-4">ยอดขายสินค้า</h5>
+            <canvas id="salesChart" style="margin-top: 10px;"></canvas>
+        </div>
+    </div>
+
+    <!-- กราฟยอดขายรวม -->
+    <div class="col-md-6 mb-4">
+        <div class="card shadow-sm p-3 h-100 position-relative">
+            <button class="btn btn-sm btn-outline-primary position-absolute top-0 end-0 m-2"
+                onclick="showFullScreenChart('totalSalesChart')">
+                <i class="fas fa-expand"></i> ขยาย
+            </button>
+            <h5 class="text-center mt-4">ยอดขายรวมทุกช่วงเวลา</h5>
+            <canvas id="totalSalesChart" style="margin-top: 10px;"></canvas>
+        </div>
+    </div>
+</div>
+
+    <!-- กราฟยอดขายรวม -->
+    <div class="card shadow-sm mt-4">
+        <div class="card-header  d-flex justify-content-between align-items-center">
+            <h5 class="mb-0">ยอดขายรายเดือนของ </h5>
+            <h5 class="fw-bold"><?= number_format($total_sales) ?> บาท</h5>
+        </div>
+        <div class="card-body">
+            <canvas id="monthlyChart" height="120"></canvas>
+        </div>
+    </div>
+
+<!-- Modal สำหรับแสดงกราฟเต็มจอ -->
+<div class="modal fade" id="chartModal" tabindex="-1" aria-labelledby="chartModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-xl modal-dialog-centered modal-fullscreen-sm-down">
+        <div class="modal-content border-0 shadow-lg rounded-4">
+            <div class="modal-header bg-light border-0 rounded-top-4 px-4">
+                <h5 class="modal-title fw-bold fs-4" id="chartModalLabel">
+                    <i class="fas fa-chart-bar me-2 text-primary"></i> กราฟแบบขยาย
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="ปิด"></button>
+            </div>
+            <div class="modal-body p-3 bg-white">
+                <div class="w-100 rounded-3" style="height: 80vh; min-height: 300px;">
+                    <canvas id="fullScreenChart" style="width: 100%; height: 100%;"></canvas>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+    <!-- Modal: อัปโหลดไฟล์ Excel -->
+    <div class="modal fade" id="uploadExcelModal" tabindex="-1" aria-labelledby="uploadExcelModalLabel" aria-hidden="true">
+        <div class="modal-dialog">
+            <form action="import_excel.php" method="POST" enctype="multipart/form-data" class="modal-content">
+            <input type="hidden" name="user_id" value="<?= $user_id ?>">
+            <input type="hidden" name="year" value="<?= $selected_year ?>">
+            <div class="modal-header">
+                <h5 class="modal-title" id="uploadExcelModalLabel">นำเข้าไฟล์ Excel (.xlsx)</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="ปิด"></button>
+            </div>
+            <div class="modal-body">
+                <div class="mb-3">
+                <label for="excelFile" class="form-label">เลือกไฟล์ Excel</label>
+                <input class="form-control" type="file" id="excelFile" name="excel_file" accept=".xlsx" required>
+                <small class="text-muted">รูปแบบไฟล์ต้องมีคอลัมน์: เดือน, ไตรมาส, สินค้า, ยอดขาย</small>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="submit" class="btn btn-primary">นำเข้า</button>
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">ยกเลิก</button>
+            </div>
+            </form>
+        </div>
+        </div>
+        
+        <?php if (isset($_GET['imported'])): ?>
+        <div class="alert alert-success mt-3">
+            นำเข้าข้อมูลยอดขายสำเร็จจำนวน <?= intval($_GET['imported']) ?> รายการ
+        </div>
+    <?php endif; ?>
+
+    <div class="container mt-5">
 
     <!-- ตารางข้อมูลยอดขาย -->
     <div class="card shadow-sm">
         <div class="card-header d-flex justify-content-between align-items-center">
-            <h5 class="mb-0">ข้อมูลยอดขายของพนักงาน: <?= htmlspecialchars($employee_name) ?></h5>
+            <h5 class="mb-0">ข้อมูลยอดขายของพนักงาน</h5>
             <div>
                 <button type="button" class="btn btn-success btn-sm me-2" data-bs-toggle="modal" data-bs-target="#addSaleModal">
                     เพิ่มข้อมูล
@@ -433,150 +578,14 @@ function formatSalesShort($number) {
     </div>
 </div>
 
-    <div class="container mt-5">
-
-    <h2 class="text-center mb-4">รายงานยอดขาย</h2>
-
-    <!-- เลือกเวลา -->
-    <div class="card p-3 mb-4 text-center">
-        <div class="d-flex justify-content-center align-items-center flex-wrap">
-            <label for="timePeriodSelect" class="form-label fw-bold me-3">เลือกช่วงเวลา:</label>
-            <select id="timePeriodSelect" class="form-select w-auto" onchange="updateTimePeriod()">
-                <option value="monthly" <?= ($timePeriod == 'monthly') ? 'selected' : '' ?>>รายเดือน</option>
-                <option value="quarterly" <?= ($timePeriod == 'quarterly') ? 'selected' : '' ?>>รายไตรมาส</option>
-            </select>
-        </div>
-    </div>
-
-    <div class="row">
-    <!--  แสดงยอดขายรวม -->
-    <div class="col-md-12 mb-3">
-        <div class="alert alert-info text-center fw-bold fs-5">
-            ยอดขายรวมทั้งหมดในปี <?= $selected_year ?>: <?= number_format($total_sales, 2) ?> บาท
-        </div>
-    </div>
-
-    <!-- แสดงตารางยอดขายและเปอร์เซ็นต์การเติบโต -->
-    
-<table class="table table-bordered table-striped mt-4 text-center">
-    <thead>
-        <tr>
-            <th>ข้อมูล</th>
-            <?php for ($month = 1; $month <= 12; $month++): ?>
-                <th><?= $monthNames[$month] ?></th>
-            <?php endfor; ?>
-        </tr>
-    </thead>
-    <tbody>
-        <tr>
-            <td><strong>ยอดขาย (บาท)</strong></td>
-            <?php for ($month = 1; $month <= 12; $month++): ?>
-                <td><?= formatSalesShort($monthly_sales[$month]) ?></td>
-            <?php endfor; ?>
-        </tr>
-        <tr>
-            <td><strong>เปอร์เซ็นต์เติบโต (%)</strong></td>
-            <?php for ($month = 1; $month <= 12; $month++): ?>
-                <td>
-                    <?php 
-                    $growth = $growth_percent[$month];
-                    if ($growth > 0) {
-                        echo '<span style="color:green;">+' . number_format($growth, 2) . '%</span>';
-                    } elseif ($growth < 0) {
-                        echo '<span style="color:red;">' . number_format($growth, 2) . '%</span>';
-                    } else {
-                        echo number_format($growth, 2) . '%';
-                    }
-                    ?>
-                </td>
-            <?php endfor; ?>
-        </tr>
-    </tbody>
-</table>
-
-    <!-- กราฟยอดขายสินค้า -->
-    <div class="col-md-6 mb-4">
-        <div class="card shadow-sm p-3 h-100 position-relative">
-            <button class="btn btn-sm btn-outline-primary position-absolute top-0 end-0 m-2"
-                onclick="showFullScreenChart('salesChart')">
-                <i class="fas fa-expand"></i> ขยาย
-            </button>
-            <h5 class="text-center mt-4">ยอดขายสินค้า</h5>
-            <canvas id="salesChart" style="margin-top: 10px;"></canvas>
-        </div>
-    </div>
-
-    <!-- กราฟยอดขายรวม -->
-    <div class="col-md-6 mb-4">
-        <div class="card shadow-sm p-3 h-100 position-relative">
-            <button class="btn btn-sm btn-outline-primary position-absolute top-0 end-0 m-2"
-                onclick="showFullScreenChart('totalSalesChart')">
-                <i class="fas fa-expand"></i> ขยาย
-            </button>
-            <h5 class="text-center mt-4">ยอดขายรวมทุกช่วงเวลา</h5>
-            <canvas id="totalSalesChart" style="margin-top: 10px;"></canvas>
-        </div>
-    </div>
-</div>
-
-<!-- Modal สำหรับแสดงกราฟเต็มจอ -->
-<div class="modal fade" id="chartModal" tabindex="-1" aria-labelledby="chartModalLabel" aria-hidden="true">
-    <div class="modal-dialog modal-xl modal-dialog-centered modal-fullscreen-sm-down">
-        <div class="modal-content border-0 shadow-lg rounded-4">
-            <div class="modal-header bg-light border-0 rounded-top-4 px-4">
-                <h5 class="modal-title fw-bold fs-4" id="chartModalLabel">
-                    <i class="fas fa-chart-bar me-2 text-primary"></i> กราฟแบบขยาย
-                </h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="ปิด"></button>
-            </div>
-            <div class="modal-body p-3 bg-white">
-                <div class="w-100 rounded-3" style="height: 80vh; min-height: 300px;">
-                    <canvas id="fullScreenChart" style="width: 100%; height: 100%;"></canvas>
-                </div>
-            </div>
-        </div>
-    </div>
-</div>
-
-    <!-- Modal: อัปโหลดไฟล์ Excel -->
-    <div class="modal fade" id="uploadExcelModal" tabindex="-1" aria-labelledby="uploadExcelModalLabel" aria-hidden="true">
-    <div class="modal-dialog">
-        <form action="import_excel.php" method="POST" enctype="multipart/form-data" class="modal-content">
-        <input type="hidden" name="user_id" value="<?= $user_id ?>">
-        <input type="hidden" name="year" value="<?= $selected_year ?>">
-        <div class="modal-header">
-            <h5 class="modal-title" id="uploadExcelModalLabel">นำเข้าไฟล์ Excel (.xlsx)</h5>
-            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="ปิด"></button>
-        </div>
-        <div class="modal-body">
-            <div class="mb-3">
-            <label for="excelFile" class="form-label">เลือกไฟล์ Excel</label>
-            <input class="form-control" type="file" id="excelFile" name="excel_file" accept=".xlsx" required>
-            <small class="text-muted">รูปแบบไฟล์ต้องมีคอลัมน์: เดือน, ไตรมาส, สินค้า, ยอดขาย</small>
-            </div>
-        </div>
-        <div class="modal-footer">
-            <button type="submit" class="btn btn-primary">นำเข้า</button>
-            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">ยกเลิก</button>
-        </div>
-        </form>
-    </div>
-    </div>
-    
-    <?php if (isset($_GET['imported'])): ?>
-    <div class="alert alert-success mt-3">
-        นำเข้าข้อมูลยอดขายสำเร็จจำนวน <?= intval($_GET['imported']) ?> รายการ
-    </div>
-<?php endif; ?>
-
 <script>
-    function updateTimePeriod() {
-        let timePeriod = document.getElementById("timePeriodSelect").value;
-        let year = <?= $selected_year ?>;
-        window.location.href = "sales_details.php?user_id=<?= $user_id ?>&timePeriod=" + timePeriod + "&year=" + year;
-    }
+function updateTimePeriod() {
+    let timePeriod = document.getElementById("timePeriodSelect").value;
+    let year = <?= $selected_year ?>;
+    window.location.href = "sales_details.php?user_id=<?= $user_id ?>&timePeriod=" + timePeriod + "&year=" + year;
+}
 
-    let salesData = <?= json_encode($sales_data) ?>;
+let salesData = <?= json_encode($sales_data) ?>;
 
 function processSalesData(salesData, timePeriod) {
     let salesSummary = {};
@@ -593,18 +602,12 @@ function processSalesData(salesData, timePeriod) {
         }
 
         // ยอดขายรวม
-        if (!salesSummary[key]) {
-            salesSummary[key] = 0;
-        }
+        if (!salesSummary[key]) salesSummary[key] = 0;
         salesSummary[key] += parseFloat(sale.amount);
 
         // ยอดขายแยกตามสินค้า
-        if (!productSales[sale.product]) {
-            productSales[sale.product] = {};
-        }
-        if (!productSales[sale.product][key]) {
-            productSales[sale.product][key] = 0;
-        }
+        if (!productSales[sale.product]) productSales[sale.product] = {};
+        if (!productSales[sale.product][key]) productSales[sale.product][key] = 0;
         productSales[sale.product][key] += parseFloat(sale.amount);
     });
 
@@ -615,27 +618,23 @@ function processSalesData(salesData, timePeriod) {
     };
 }
 
-// Process data based on the selected year
 let timePeriod = "<?= $timePeriod ?>";
 let processedData = processSalesData(salesData, timePeriod);
 
-const productLabels = Object.keys(processedData.productSales);
-const productData = Object.values(processedData.productSales).map(obj =>
-    Object.values(obj).reduce((a, b) => a + b, 0)
-);
+// --- กราฟสินค้ารายเดือน 12 เดือน ---
+const monthLabels = <?= json_encode(array_values($monthNames), JSON_UNESCAPED_UNICODE) ?>;
+const monthlySales = <?= json_encode(array_values($monthly_sales), JSON_NUMERIC_CHECK) ?>;
 
-// สีพาสเทลสวยงาม (สำหรับ background)
+// สร้างสีพาสเทล
 const pastelColors = [
-    'rgba(255, 99, 132, 0.6)',   // แดงอมชมพู
-    'rgba(255, 159, 64, 0.6)',   // ส้ม
-    'rgba(255, 205, 86, 0.6)',   // เหลือง
-    'rgba(75, 192, 192, 0.6)',   // เขียวมิ้นต์
-    'rgba(54, 162, 235, 0.6)',   // ฟ้า
-    'rgba(153, 102, 255, 0.6)',  // ม่วงอ่อน
-    'rgba(201, 203, 207, 0.6)'   // เทา
+    'rgba(255, 99, 132, 0.6)', 
+    'rgba(255, 159, 64, 0.6)', 
+    'rgba(255, 205, 86, 0.6)', 
+    'rgba(75, 192, 192, 0.6)', 
+    'rgba(54, 162, 235, 0.6)', 
+    'rgba(153, 102, 255, 0.6)', 
+    'rgba(201, 203, 207, 0.6)'
 ];
-
-// สีเข้มสำหรับขอบ
 const pastelBorders = [
     'rgba(255, 99, 132, 1)',
     'rgba(255, 159, 64, 1)',
@@ -646,18 +645,16 @@ const pastelBorders = [
     'rgba(201, 203, 207, 1)'
 ];
 
-// ถ้าสินค้ามีมากกว่า 7 ชนิด ให้ทำสีวนซ้ำ
-const backgroundColors = productLabels.map((_, i) => pastelColors[i % pastelColors.length]);
-const borderColors = productLabels.map((_, i) => pastelBorders[i % pastelBorders.length]);
+const backgroundColors = monthLabels.map((_, i) => pastelColors[i % pastelColors.length]);
+const borderColors = monthLabels.map((_, i) => pastelBorders[i % pastelBorders.length]);
 
-//  กราฟแท่ง: ยอดขายสินค้าแต่ละตัว
-new Chart(document.getElementById("salesChart"), {
+new Chart(document.getElementById("monthlyChart"), {
     type: "bar",
     data: {
-        labels: productLabels,
+        labels: monthLabels,
         datasets: [{
-            label: "ยอดขายสินค้า",
-            data: productData,
+            label: "ยอดขายเดือน",
+            data: monthlySales,
             backgroundColor: backgroundColors,
             borderColor: borderColors,
             borderWidth: 1
@@ -667,28 +664,68 @@ new Chart(document.getElementById("salesChart"), {
         responsive: true,
         maintainAspectRatio: true,
         plugins: {
-            legend: {
-                display: false // ไม่แสดง legend ถ้ามีเพียงชุดข้อมูลเดียว
-            },
+            legend: { display: false },
             tooltip: {
                 callbacks: {
-                    label: context => ` ${context.dataset.label}: ${context.raw.toLocaleString()} บาท`
+                    label: ctx => ` ${ctx.dataset.label}: ${ctx.raw.toLocaleString()} บาท`
                 }
             }
         },
         scales: {
             y: {
                 beginAtZero: true,
-                ticks: {
-                    callback: value => value.toLocaleString() + ' บาท'
-                }
+                ticks: { callback: value => value.toLocaleString() + ' บาท' }
+            }
+        },
+        onClick: (event, elements) => {
+            if (elements.length > 0) {
+                const monthIndex = elements[0].index;
+                const monthNumber = monthIndex + 1;
+                const year = <?= $selected_year ?>;
+                // ไปหน้าแสดงสินค้าของเดือนนั้น
+                window.location.href = `sales_by_month_ss.php?user_id=<?= $user_id ?>&year=${year}&month=${monthNumber}`;
             }
         }
     }
 });
 
+// --- กราฟสินค้ารวม ---
+const productLabels = Object.keys(processedData.productSales);
+const productData = Object.values(processedData.productSales).map(obj =>
+    Object.values(obj).reduce((a, b) => a + b, 0)
+);
 
-//  กราฟเส้น: ยอดขายรวมทุกช่วงเวลา
+const productBackgroundColors = productLabels.map((_, i) => pastelColors[i % pastelColors.length]);
+const productBorderColors = productLabels.map((_, i) => pastelBorders[i % pastelBorders.length]);
+
+new Chart(document.getElementById("salesChart"), {
+    type: "bar",
+    data: {
+        labels: productLabels,
+        datasets: [{
+            label: "ยอดขายสินค้า",
+            data: productData,
+            backgroundColor: productBackgroundColors,
+            borderColor: productBorderColors,
+            borderWidth: 1
+        }]
+    },
+    options: {
+        responsive: true,
+        maintainAspectRatio: true,
+        plugins: {
+            legend: { display: false },
+            tooltip: {
+                callbacks: { label: ctx => ` ${ctx.dataset.label}: ${ctx.raw.toLocaleString()} บาท` }
+            }
+        },
+        scales: {
+            y: { beginAtZero: true, ticks: { callback: value => value.toLocaleString() + ' บาท' } }
+        }
+    }
+});
+
+// --- กราฟเส้นยอดขายรวม ---
 new Chart(document.getElementById("totalSalesChart"), {
     type: "line",
     data: {
@@ -706,18 +743,8 @@ new Chart(document.getElementById("totalSalesChart"), {
         responsive: true,
         maintainAspectRatio: true,
         scales: {
-            x: {
-                title: {
-                    display: true,
-                    text: "ช่วงเวลา"
-                }
-            },
-            y: {
-                title: {
-                    display: true,
-                    text: "ยอดขาย (บาท)"
-                }
-            }
+            x: { title: { display: true, text: "ช่วงเวลา" } },
+            y: { title: { display: true, text: "ยอดขาย (บาท)" } }
         }
     }
 });
