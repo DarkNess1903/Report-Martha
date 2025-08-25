@@ -68,10 +68,10 @@ $monthName = $monthNames[$month] ?? "ไม่ระบุ";
     </div>
 
     <!-- Card กราฟและยอดรวม -->
-    <div class="card shadow-sm mb-4">
-        <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
+    <div class="card shadow-sm mb-4 ">
+        <div class="card-header text-white d-flex justify-content-between align-items-center" style="background-color:#1d1ca1;">
             <h5 class="mb-0">ยอดขาย <?= htmlspecialchars($employee_name) ?> เดือน <?= $monthName ?> ปี <?= $year ?></h5>
-            <h5 class="fw-bold"><?= number_format($total_month) ?> บาท</h5>
+            <h4 class="fw-bold"><?= number_format($total_month) ?> บาท</h4>
         </div>
         <div class="card-body">
             <div style="position: relative; height: 400px; width: 100%;">

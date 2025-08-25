@@ -74,7 +74,7 @@ $conn->close();
 
    <!-- กราฟยอดขาย -->
     <div class="card shadow-sm mb-4">
-        <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center flex-wrap">
+        <div class="card-header text-white d-flex justify-content-between align-items-center flex-wrap" style="background-color:#1d1ca1;">
             <h5 class="mb-0">ยอดขายสินค้าทั้งหมด เดือน <?= $monthName ?> ปี <?= $year ?></h5>
             <h4 class="fw-bold"><?= number_format($totalAmount) ?> บาท</h4>
         </div>

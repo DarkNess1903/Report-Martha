@@ -238,18 +238,6 @@ function formatSalesShort($number) {
     <div class="container mt-5">
         <h2 class="text-center mb-4">รายงานยอดขาย</h2>
 
-    <!-- เลือกเวลา -->
-    <div class="card p-3 mb-4 text-center">
-        <div class="d-flex justify-content-center align-items-center flex-wrap">
-            <label for="timePeriodSelect" class="form-label fw-bold me-3">เลือกช่วงเวลา:</label>
-            <select id="timePeriodSelect" class="form-select w-auto" onchange="updateTimePeriod()">
-                <option value="monthly" <?= ($timePeriod == 'monthly') ? 'selected' : '' ?>>รายเดือน</option>
-                <option value="quarterly" <?= ($timePeriod == 'quarterly') ? 'selected' : '' ?>>รายไตรมาส</option>
-            </select>
-        </div>
-    </div>
-
-    <div class="row">
     <!--  แสดงยอดขายรวม -->
     <div class="col-md-12 mb-3">
         <div class="alert alert-info text-center fw-bold fs-5">
@@ -295,6 +283,7 @@ function formatSalesShort($number) {
     </tbody>
 </table>
 
+    <div class="row">
     <!-- กราฟยอดขายสินค้า -->
     <div class="col-md-6 mb-4">
         <div class="card shadow-sm p-3 h-100 position-relative">
@@ -307,18 +296,31 @@ function formatSalesShort($number) {
         </div>
     </div>
 
-    <!-- กราฟยอดขายรวม -->
+    <!-- Card รวม เลือกเวลา + กราฟ -->
     <div class="col-md-6 mb-4">
         <div class="card shadow-sm p-3 h-100 position-relative">
+            <!-- ปุ่มขยาย -->
             <button class="btn btn-sm btn-outline-primary position-absolute top-0 end-0 m-2"
                 onclick="showFullScreenChart('totalSalesChart')">
                 <i class="fas fa-expand"></i> ขยาย
             </button>
-            <h5 class="text-center mt-4">ยอดขายรวมทุกช่วงเวลา</h5>
+
+            <!-- เลือกเวลา -->
+            <div class="text-center mb-3">
+                <div class="d-flex justify-content-center align-items-center flex-wrap">
+                    <label for="timePeriodSelect" class="form-label fw-bold me-3">เลือกช่วงเวลา:</label>
+                    <select id="timePeriodSelect" class="form-select w-auto" onchange="updateTimePeriod()">
+                        <option value="monthly" <?= ($timePeriod == 'monthly') ? 'selected' : '' ?>>รายเดือน</option>
+                        <option value="quarterly" <?= ($timePeriod == 'quarterly') ? 'selected' : '' ?>>รายไตรมาส</option>
+                    </select>
+                </div>
+            </div>
+
+            <!-- กราฟยอดขายรวม -->
+            <h5 class="text-center">ยอดขายรวมทุกช่วงเวลา</h5>
             <canvas id="totalSalesChart" style="margin-top: 10px;"></canvas>
         </div>
     </div>
-</div>
 
     <!-- กราฟยอดขายรวม -->
     <div class="card shadow-sm mt-4">
