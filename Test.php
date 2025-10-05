@@ -244,6 +244,11 @@ function formatSalesShort($number)
             max-width: 800px;
             margin: auto;
         }
+
+        .modal-content {
+            background-color: #fff !important;
+            color: #000;
+        }
     </style>
 </head>
 
@@ -400,6 +405,7 @@ function formatSalesShort($number)
                             <?php } ?>
                         </tbody>
                     </table>
+                </form>
             </div>
         </div>
     </div>
@@ -538,8 +544,7 @@ function formatSalesShort($number)
                         <div class="modal-body">
                             <div class="mb-3">
                                 <label for="excelFile" class="form-label">เลือกไฟล์ Excel</label>
-                                <input class="form-control" type="file" id="excelFile" name="excel_file" accept=".xlsx"
-                                    required>
+                                <input class="form-control" type="file" id="excelFile" name="excel_file" accept=".xlsx" required>
                                 <small class="text-muted">รูปแบบไฟล์ต้องมีคอลัมน์: เดือน, สินค้า, ยอดขาย</small><br>
                                 <a href="https://docs.google.com/spreadsheets/d/1aNTM4jjaW2OImlnB1VyEEkMDMWsCAPqg/edit?usp=sharing&ouid=100893472232008762625&rtpof=true&sd=true"
                                     download>
@@ -561,9 +566,7 @@ function formatSalesShort($number)
                 </div>
             <?php endif; ?>
 
-            <div class="container mt-5">
-
-
+            <!-- <div class="container mt-5"> -->
 </body>
 
 <!-- Modal เพิ่มข้อมูลยอดขาย -->

@@ -256,7 +256,6 @@ function formatSalesShort($number)
         </div>
 
         <!-- แสดงตารางยอดขายและเปอร์เซ็นต์การเติบโต -->
-
         <table class="table table-bordered table-striped mt-4 text-center">
             <thead>
                 <tr>
@@ -376,7 +375,11 @@ function formatSalesShort($number)
                             <div class="mb-3">
                                 <label for="excelFile" class="form-label">เลือกไฟล์ Excel</label>
                                 <input class="form-control" type="file" id="excelFile" name="excel_file" accept=".xlsx" required>
-                                <small class="text-muted">รูปแบบไฟล์ต้องมีคอลัมน์: เดือน, ไตรมาส, สินค้า, ยอดขาย</small>
+                                <small class="text-muted">รูปแบบไฟล์ต้องมีคอลัมน์: เดือน, ไตรมาส, สินค้า, ยอดขาย</small><br>
+                                <a href="https://docs.google.com/spreadsheets/d/1aNTM4jjaW2OImlnB1VyEEkMDMWsCAPqg/edit?usp=sharing&ouid=100893472232008762625&rtpof=true&sd=true"
+                                    download>
+                                    📥 ดาวน์โหลดตัวอย่าง Excel
+                                </a>
                             </div>
                         </div>
                         <div class="modal-footer">
