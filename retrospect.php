@@ -95,11 +95,11 @@ function getTopProducts($conn, $year, $limit = 5, $asc = false) {
     return [$labels, $values];
 }
 
-list($topProducts1, $topAmounts1) = getTopProducts($conn, $year1);
-list($topProducts2, $topAmounts2) = getTopProducts($conn, $year2);
+list($topProducts1, $topAmounts1) = getTopProducts($conn, $year1 ,10);
+list($topProducts2, $topAmounts2) = getTopProducts($conn, $year2 ,10);
 
-list($worstProducts1, $worstAmounts1) = getTopProducts($conn, $year1, 5, true);
-list($worstProducts2, $worstAmounts2) = getTopProducts($conn, $year2, 5, true);
+list($worstProducts1, $worstAmounts1) = getTopProducts($conn, $year1, 10, true);
+list($worstProducts2, $worstAmounts2) = getTopProducts($conn, $year2, 10, true);
 
 $stmt->close();
 $conn->close();

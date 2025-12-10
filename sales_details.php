@@ -69,7 +69,20 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
         $stmt->bind_param("iissdi", $year, $month, $quarter, $product, $amount, $sale_id);
         $stmt->execute();
         $stmt->close();
+    } elseif (isset($_POST['delete_sales'])) {
+        if (!empty($_POST['sale_ids']) && is_array($_POST['sale_ids'])) {
+            $ids = $_POST['sale_ids'];
+            $placeholders = implode(',', array_fill(0, count($ids), '?'));
+            $types = str_repeat('i', count($ids));
+
+            $sql = "DELETE FROM sales WHERE id IN ($placeholders)";
+            $stmt = $conn->prepare($sql);
+            $stmt->bind_param($types, ...$ids);
+            $stmt->execute();
+            $stmt->close();
+        }
     } elseif (isset($_POST['delete_sale'])) {
+        // ✅ ยังคงใช้ได้แบบลบทีละอัน
         $sale_id = $_POST['sale_id'];
 
         $sql = "DELETE FROM sales WHERE id=?";
@@ -78,6 +91,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
         $stmt->execute();
         $stmt->close();
     }
+
     $redirect_year = isset($_POST['year']) ? intval($_POST['year']) : date("Y");
     $redirect_timePeriod = isset($_POST['timePeriod']) ? $_POST['timePeriod'] : 'monthly';
 
@@ -192,42 +206,33 @@ function formatSalesShort($number)
 <html>
 
 <head>
-
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <link rel="stylesheet" href="css/bootstrap.min.css">
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
 
-    <!-- Favicons -->
-    <link href="assets/img/ma2.png" rel="icon">
-    <link href="assets/img/ma2.png" rel="apple-touch-icon">
+    <!-- Bootstrap CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
 
-    <!-- ลิงค์ของตาราง -->
-    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.10.0/css/all.min.css" rel="stylesheet">
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.4.1/font/bootstrap-icons.css" rel="stylesheet">
+    <!-- Bootstrap Icons -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css" rel="stylesheet">
 
+    <!-- Font Awesome  -->
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" rel="stylesheet">
 
-    <!-- ไลบารี่ไอคอน -->
-    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.10.0/css/all.min.css" rel="stylesheet">
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.4.1/font/bootstrap-icons.css" rel="stylesheet">
+    <!--  DataTables CSS -->
+    <link href="https://cdn.datatables.net/1.13.4/css/jquery.dataTables.min.css" rel="stylesheet">
 
+    <!--  Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Open+Sans:wght@300;400;600;700&family=Nunito:wght@300;400;600;700&family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
 
-    <!-- Google Fonts -->
-    <link href="https://fonts.gstatic.com" rel="preconnect">
-    <link href="https://fonts.googleapis.com/css?family=Open+Sans:300,300i,400,400i,600,600i,700,700i|Nunito:300,300i,400,400i,600,600i,700,700i|Poppins:300,300i,400,400i,500,500i,600,600i,700,700i" rel="stylesheet">
+    <!--  Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
 
+    <!--  Bootstrap JS (bundle รวม Popper แล้ว) -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
 
-    <!-- Template Main CSS File -->
-    <link href="assets/css/style.css" rel="stylesheet">
-    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.10.0/css/all.min.css" rel="stylesheet">
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.4.1/font/bootstrap-icons.css" rel="stylesheet">
-    <link href="//cdn.datatables.net/1.13.4/css/jquery.dataTables.min.css" rel="stylesheet">
-    <!-- จบลิงค์ของตาราง -->
     <title>Sales Report</title>
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css">
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
     <script>
         function confirmAction(message) {
             return confirm(message);
@@ -239,23 +244,185 @@ function formatSalesShort($number)
             max-width: 800px;
             margin: auto;
         }
+
+        .modal-content {
+            background-color: #fff !important;
+            color: #000;
+        }
     </style>
 </head>
 
 <body>
     <?php include 'topnavbar.php'; ?>
 
+
+    <div class="container mt-5">
+        <h2 class="text-center mb-4">จัดการยอดขาย</h2>
+        <!-- ตารางข้อมูลยอดขาย -->
+        <div class="card shadow-sm">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h5 class="mb-0">ข้อมูลยอดขายของพนักงาน</h5>
+                <div>
+                    <button type="button" class="btn btn-success btn-sm me-2" data-bs-toggle="modal"
+                        data-bs-target="#addSaleModal">
+                        เพิ่มข้อมูล
+                    </button>
+                    <!-- ปุ่มเปิด modal สำหรับอัปโหลด Excel -->
+                    <button type="button" class="btn btn-primary btn-sm" data-bs-toggle="modal"
+                        data-bs-target="#uploadExcelModal">
+                        นำเข้า Excel
+                    </button>
+                </div>
+            </div>
+            <div class="card-body">
+                <!-- ฟอร์มรวมสำหรับลบหลายรายการ -->
+                <form method="post" onsubmit="return confirmAction('คุณแน่ใจหรือไม่ที่จะลบหลายรายการที่เลือก?')">
+                    <button type="submit" name="delete_sales" class="btn btn-danger btn-sm mb-2 float-end">
+                        <i class="fas fa-trash"></i> ลบที่เลือก
+                    </button>
+
+                    <table id="tabledata" class="table table-striped table-bordered">
+                        <thead style="font-size: small;">
+                            <tr>
+                                <th>
+                                    <input type="checkbox" onclick="toggleAll(this)">
+                                </th>
+                                <th>ปี</th>
+                                <?php if ($timePeriod == 'monthly') echo '<th>เดือน</th>'; ?>
+                                <?php if ($timePeriod == 'quarterly') echo '<th>ไตรมาส</th>'; ?>
+                                <th>สินค้า</th>
+                                <th>ยอดขาย</th>
+                                <th>จัดการ</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <?php foreach ($sales_data as $row) { ?>
+                                <tr>
+                                    <td>
+                                        <input type="checkbox" name="sale_ids[]" value="<?= $row['id'] ?>">
+                                    </td>
+                                    <td><?= $row['year'] ?></td>
+                                    <?php if ($timePeriod == 'monthly'): ?>
+                                        <td><?= isset($monthNames[$row['month']]) ? $monthNames[$row['month']] : '-' ?></td>
+                                    <?php endif; ?>
+                                    <?php if ($timePeriod == 'quarterly') echo '<td>' . ($row['quarter'] ?? '-') . '</td>'; ?>
+                                    <td><?= $row['product'] ?></td>
+                                    <td><?= number_format($row['amount'], 2) ?></td>
+                                    <td>
+                                        <!-- ปุ่มแก้ไข -->
+                                        <button type="button" class="btn btn-warning btn-sm"
+                                            data-bs-toggle="modal" data-bs-target="#editModal<?= $row['id'] ?>"
+                                            title="แก้ไข">
+                                            <i class="fas fa-edit"></i>
+                                        </button>
+
+                                        <!-- ปุ่มลบทีละอัน -->
+                                        <form method="post" class="d-inline"
+                                            onsubmit="return confirmAction('คุณแน่ใจหรือไม่ที่จะลบรายการนี้?')">
+                                            <input type="hidden" name="sale_id" value="<?= $row['id'] ?>">
+                                            <button type="submit" name="delete_sale" class="btn btn-danger btn-sm" title="ลบ">
+                                                <i class="fas fa-trash-alt"></i>
+                                            </button>
+                                        </form>
+                                    </td>
+                                </tr>
+
+                                <!-- Modal แก้ไข -->
+                                <div class="modal fade" id="editModal<?= $row['id'] ?>" tabindex="-1"
+                                    aria-labelledby="editModalLabel<?= $row['id'] ?>" aria-hidden="true">
+                                    <div class="modal-dialog">
+                                        <div class="modal-content">
+                                            <div class="modal-header">
+                                                <h5 class="modal-title">แก้ไขยอดขาย</h5>
+                                                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                                            </div>
+                                            <form method="post">
+                                                <div class="modal-body">
+                                                    <input type="hidden" name="sale_id" value="<?= $row['id'] ?>">
+
+                                                    <div class="mb-3">
+                                                        <label class="form-label">ปี</label>
+                                                        <input type="number" class="form-control" name="year"
+                                                            value="<?= $row['year'] ?>" required>
+                                                    </div>
+
+                                                    <?php if ($timePeriod == 'monthly') { ?>
+                                                        <div class="mb-3">
+                                                            <label class="form-label">เดือน</label>
+                                                            <select class="form-select" name="month" required>
+                                                                <?php
+                                                                $months = [
+                                                                    1 => 'มกราคม',
+                                                                    2 => 'กุมภาพันธ์',
+                                                                    3 => 'มีนาคม',
+                                                                    4 => 'เมษายน',
+                                                                    5 => 'พฤษภาคม',
+                                                                    6 => 'มิถุนายน',
+                                                                    7 => 'กรกฎาคม',
+                                                                    8 => 'สิงหาคม',
+                                                                    9 => 'กันยายน',
+                                                                    10 => 'ตุลาคม',
+                                                                    11 => 'พฤศจิกายน',
+                                                                    12 => 'ธันวาคม'
+                                                                ];
+                                                                foreach ($months as $num => $name):
+                                                                ?>
+                                                                    <option value="<?= $num ?>" <?= (isset($row['month']) && $row['month'] == $num) ? 'selected' : '' ?>>
+                                                                        <?= $name ?>
+                                                                    </option>
+                                                                <?php endforeach; ?>
+                                                            </select>
+                                                        </div>
+                                                    <?php } ?>
+
+                                                    <div class="mb-3">
+                                                        <label class="form-label">สินค้า</label>
+                                                        <input type="text" class="form-control" name="product"
+                                                            value="<?= $row['product'] ?>" required>
+                                                    </div>
+
+                                                    <div class="mb-3">
+                                                        <label class="form-label">ยอดขาย</label>
+                                                        <input type="number" class="form-control" name="amount" step="0.01"
+                                                            min="0" inputmode="decimal" lang="en"
+                                                            value="<?= number_format((float) $row['amount'], 2, '.', '') ?>"
+                                                            placeholder="เช่น 1999.25 หรือ 2500.00" required>
+                                                    </div>
+                                                </div>
+                                                <div class="modal-footer">
+                                                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                                                        <i class="fas fa-times"></i> ยกเลิก
+                                                    </button>
+                                                    <button type="submit" name="edit_sale" class="btn btn-primary">
+                                                        <i class="fas fa-save"></i> บันทึก
+                                                    </button>
+                                                </div>
+                                            </form>
+                                        </div>
+                                    </div>
+                                </div>
+
+                            <?php } ?>
+                        </tbody>
+                    </table>
+                </form>
+            </div>
+        </div>
+    </div>
+    <!-- </div> -->
+
     <div class="container mt-5">
         <h2 class="text-center mb-4">รายงานยอดขาย</h2>
-
         <!--  แสดงยอดขายรวม -->
         <div class="col-md-12 mb-3">
             <div class="alert alert-info text-center fw-bold fs-5">
-                ยอดขายรวมทั้งหมด <?= htmlspecialchars($employee_name) ?> ปี <?= $selected_year ?>: <?= number_format($total_sales, 2) ?> บาท
+                ยอดขายรวมทั้งหมด <?= htmlspecialchars($employee_name) ?> ปี <?= $selected_year ?>:
+                <?= number_format($total_sales, 2) ?> บาท
             </div>
         </div>
 
         <!-- แสดงตารางยอดขายและเปอร์เซ็นต์การเติบโต -->
+
         <table class="table table-bordered table-striped mt-4 text-center">
             <thead>
                 <tr>
@@ -319,14 +486,16 @@ function formatSalesShort($number)
                         <div class="d-flex justify-content-center align-items-center flex-wrap">
                             <label for="timePeriodSelect" class="form-label fw-bold me-3">เลือกช่วงเวลา:</label>
                             <select id="timePeriodSelect" class="form-select w-auto" onchange="updateTimePeriod()">
-                                <option value="monthly" <?= ($timePeriod == 'monthly') ? 'selected' : '' ?>>รายเดือน</option>
-                                <option value="quarterly" <?= ($timePeriod == 'quarterly') ? 'selected' : '' ?>>รายไตรมาส</option>
+                                <option value="monthly" <?= ($timePeriod == 'monthly') ? 'selected' : '' ?>>รายเดือน
+                                </option>
+                                <option value="quarterly" <?= ($timePeriod == 'quarterly') ? 'selected' : '' ?>>รายไตรมาส
+                                </option>
                             </select>
                         </div>
                     </div>
 
                     <!-- กราฟยอดขายรวม -->
-                    <h5 class="text-center">ยอดขายรวมทุกช่วงเวลา</h5>
+                    <h5 class="text-center"> ยอดขายรวมทุกช่วงเวลา</h5>
                     <canvas id="totalSalesChart" style="margin-top: 10px;"></canvas>
                 </div>
             </div>
@@ -334,7 +503,7 @@ function formatSalesShort($number)
             <!-- กราฟยอดขายรวม -->
             <div class="card shadow-sm mt-4">
                 <div class="card-header  d-flex justify-content-between align-items-center">
-                    <h5 class="mb-0">ยอดขายรายเดือนของ </h5>
+                    <h5 class="mb-0">ยอดขายรายเดือน </h5>
                     <h5 class="fw-bold"><?= number_format($total_sales) ?> บาท</h5>
                 </div>
                 <div class="card-body">
@@ -362,7 +531,8 @@ function formatSalesShort($number)
             </div>
 
             <!-- Modal: อัปโหลดไฟล์ Excel -->
-            <div class="modal fade" id="uploadExcelModal" tabindex="-1" aria-labelledby="uploadExcelModalLabel" aria-hidden="true">
+            <div class="modal fade" id="uploadExcelModal" tabindex="-1" aria-labelledby="uploadExcelModalLabel"
+                aria-hidden="true">
                 <div class="modal-dialog">
                     <form action="import_excel.php" method="POST" enctype="multipart/form-data" class="modal-content">
                         <input type="hidden" name="user_id" value="<?= $user_id ?>">
@@ -375,7 +545,7 @@ function formatSalesShort($number)
                             <div class="mb-3">
                                 <label for="excelFile" class="form-label">เลือกไฟล์ Excel</label>
                                 <input class="form-control" type="file" id="excelFile" name="excel_file" accept=".xlsx" required>
-                                <small class="text-muted">รูปแบบไฟล์ต้องมีคอลัมน์: เดือน, ไตรมาส, สินค้า, ยอดขาย</small><br>
+                                <small class="text-muted">รูปแบบไฟล์ต้องมีคอลัมน์: เดือน, สินค้า, ยอดขาย</small><br>
                                 <a href="https://docs.google.com/spreadsheets/d/1aNTM4jjaW2OImlnB1VyEEkMDMWsCAPqg/edit?usp=sharing&ouid=100893472232008762625&rtpof=true&sd=true"
                                     download>
                                     📥 ดาวน์โหลดตัวอย่าง Excel
@@ -396,144 +566,7 @@ function formatSalesShort($number)
                 </div>
             <?php endif; ?>
 
-            <div class="container mt-5">
-
-                <!-- ตารางข้อมูลยอดขาย -->
-                <div class="card shadow-sm">
-                    <div class="card-header d-flex justify-content-between align-items-center">
-                        <h5 class="mb-0">ข้อมูลยอดขายของพนักงาน</h5>
-                        <div>
-                            <button type="button" class="btn btn-success btn-sm me-2" data-bs-toggle="modal" data-bs-target="#addSaleModal">
-                                เพิ่มข้อมูล
-                            </button>
-                            <!-- ปุ่มเปิด modal สำหรับอัปโหลด Excel -->
-                            <button type="button" class="btn btn-primary btn-sm" data-bs-toggle="modal" data-bs-target="#uploadExcelModal">
-                                นำเข้า Excel
-                            </button>
-                        </div>
-                    </div>
-                    <div class="card-body">
-                        <table id="tabledata" class="table table-striped table-boredered">
-                            <thead style="font-size: small;">
-                                <tr>
-                                    <th>ปี</th>
-                                    <?php if ($timePeriod == 'monthly') echo '<th>เดือน</th>'; ?>
-                                    <?php if ($timePeriod == 'quarterly') echo '<th>ไตรมาส</th>'; ?>
-                                    <th>สินค้า</th>
-                                    <th>ยอดขาย</th>
-                                    <th>จัดการ</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                <?php foreach ($sales_data as $row) { ?>
-                                    <tr>
-                                        <td><?= $row['year'] ?></td>
-                                        <?php if ($timePeriod == 'monthly'): ?>
-                                            <td><?= isset($monthNames[$row['month']]) ? $monthNames[$row['month']] : '-' ?></td>
-                                        <?php endif; ?>
-                                        <?php if ($timePeriod == 'quarterly') echo '<td>' . ($row['quarter'] ?? '-') . '</td>'; ?>
-                                        <td><?= $row['product'] ?></td>
-                                        <td><?= number_format($row['amount'], 2) ?></td>
-                                        <td>
-                                            <!-- ปุ่มแก้ไข -->
-                                            <button type="button" class="btn btn-warning btn-sm" data-bs-toggle="modal" data-bs-target="#editModal<?= $row['id'] ?>" title="แก้ไข">
-                                                <i class="fas fa-edit"></i>
-                                            </button>
-
-                                            <!-- ปุ่มลบ -->
-                                            <form method="post" class="d-inline" onsubmit="return confirmAction('คุณแน่ใจหรือไม่ที่จะลบรายการนี้?')">
-                                                <input type="hidden" name="sale_id" value="<?= $row['id'] ?>">
-                                                <button type="submit" name="delete_sale" class="btn btn-danger btn-sm" title="ลบ">
-                                                    <i class="fas fa-trash-alt"></i>
-                                                </button>
-                                            </form>
-                                        </td>
-                                    </tr>
-
-                                    <!-- Modal แก้ไข -->
-                                    <div class="modal fade" id="editModal<?= $row['id'] ?>" tabindex="-1" aria-labelledby="editModalLabel<?= $row['id'] ?>" aria-hidden="true">
-                                        <div class="modal-dialog">
-                                            <div class="modal-content">
-                                                <div class="modal-header">
-                                                    <h5 class="modal-title">แก้ไขยอดขาย</h5>
-                                                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-                                                </div>
-                                                <form method="post">
-                                                    <div class="modal-body">
-                                                        <input type="hidden" name="sale_id" value="<?= $row['id'] ?>">
-
-                                                        <div class="mb-3">
-                                                            <label class="form-label">ปี</label>
-                                                            <input type="number" class="form-control" name="year" value="<?= $row['year'] ?>" required>
-                                                        </div>
-
-                                                        <?php if ($timePeriod == 'monthly') { ?>
-                                                            <div class="mb-3">
-                                                                <label class="form-label">เดือน</label>
-                                                                <select class="form-select" name="month" required>
-                                                                    <?php
-                                                                    $months = [
-                                                                        1 => 'มกราคม',
-                                                                        2 => 'กุมภาพันธ์',
-                                                                        3 => 'มีนาคม',
-                                                                        4 => 'เมษายน',
-                                                                        5 => 'พฤษภาคม',
-                                                                        6 => 'มิถุนายน',
-                                                                        7 => 'กรกฎาคม',
-                                                                        8 => 'สิงหาคม',
-                                                                        9 => 'กันยายน',
-                                                                        10 => 'ตุลาคม',
-                                                                        11 => 'พฤศจิกายน',
-                                                                        12 => 'ธันวาคม'
-                                                                    ];
-                                                                    foreach ($months as $num => $name):
-                                                                    ?>
-                                                                        <option value="<?= $num ?>" <?= (isset($row['month']) && $row['month'] == $num) ? 'selected' : '' ?>>
-                                                                            <?= $name ?>
-                                                                        </option>
-                                                                    <?php endforeach; ?>
-                                                                </select>
-                                                            </div>
-                                                        <?php } ?>
-
-                                                        <div class="mb-3">
-                                                            <label class="form-label">สินค้า</label>
-                                                            <input type="text" class="form-control" name="product" value="<?= $row['product'] ?>" required>
-                                                        </div>
-
-                                                        <div class="mb-3">
-                                                            <label class="form-label">ยอดขาย</label>
-                                                            <input type="number" class="form-control"
-                                                                name="amount"
-                                                                step="0.01"
-                                                                min="0"
-                                                                inputmode="decimal"
-                                                                lang="en"
-                                                                value="<?= number_format((float)$row['amount'], 2, '.', '') ?>"
-                                                                placeholder="เช่น 1999.25 หรือ 2500.00"
-                                                                required>
-                                                        </div>
-                                                    </div>
-                                                    <div class="modal-footer">
-                                                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
-                                                            <i class="fas fa-times"></i> ยกเลิก
-                                                        </button>
-                                                        <button type="submit" name="edit_sale" class="btn btn-primary">
-                                                            <i class="fas fa-save"></i> บันทึก
-                                                        </button>
-                                                    </div>
-                                                </form>
-                                            </div>
-                                        </div>
-                                    </div>
-
-                                <?php } ?>
-                            </tbody>
-                        </table>
-                    </div>
-                </div>
-            </div>
-            <!-- </div> -->
+            <!-- <div class="container mt-5"> -->
 </body>
 
 <!-- Modal เพิ่มข้อมูลยอดขาย -->
@@ -581,20 +614,16 @@ function formatSalesShort($number)
 
                     <div class="mb-3">
                         <label class="form-label">ยอดขาย</label>
-                        <input type="number" class="form-control"
-                            name="amount"
-                            step="0.01"
-                            min="0"
-                            inputmode="decimal"
-                            lang="en"
-                            placeholder="เช่น 1999.25 หรือ 2500"
-                            required>
+                        <input type="number" class="form-control" name="amount" step="0.01" min="0" inputmode="decimal"
+                            lang="en" placeholder="เช่น 1999.25 หรือ 2500" required>
                     </div>
 
                 </div>
                 <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal"> <i class="fas fa-times"></i> ยกเลิก</button>
-                    <button type="submit" name="add_sale" class="btn btn-primary"> <i class="fas fa-save"></i> บันทึก</button>
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal"> <i
+                            class="fas fa-times"></i> ยกเลิก</button>
+                    <button type="submit" name="add_sale" class="btn btn-primary"> <i class="fas fa-save"></i>
+                        บันทึก</button>
                 </div>
             </form>
         </div>
@@ -805,21 +834,21 @@ function formatSalesShort($number)
         }
     });
 </script>
-<!-- Vendor JS Files -->
-<script src="assets/vendor/apexcharts/apexcharts.min.js"></script>
-<script src="assets/vendor/bootstrap/js/bootstrap.bundle.min.js"></script>
-<script src="assets/vendor/chart.js/chart.umd.js"></script>
-<script src="assets/vendor/echarts/echarts.min.js"></script>
-<script src="assets/vendor/quill/quill.min.js"></script>
-<script src="assets/vendor/simple-datatables/simple-datatables.js"></script>
-<script src="assets/vendor/tinymce/tinymce.min.js"></script>
-<script src="assets/vendor/php-email-form/validate.js"></script>
 
-<!-- Template Main JS File -->
-<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.0.2/dist/js/bootstrap.bundle.min.js" integrity="sha384-MrcW6ZMFYlzcLA8Nl+NtUVF0sA7MsXsP1UyJoMp4YLEuNSfAP+JcXn/tWtIaxVXM" crossorigin="anonymous"></script>
-<script src="https://code.jquery.com/jquery-3.7.0.min.js"></script>
-<script src="//cdn.datatables.net/1.13.4/js/jquery.dataTables.min.js"></script>
-<script src="assets/js/main-123.js"></script>
+<!-- ApexCharts -->
+<script src="https://cdn.jsdelivr.net/npm/apexcharts@3.49.0/dist/apexcharts.min.js"></script>
+
+<!-- ECharts -->
+<script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
+
+<!-- Bootstrap JS (bundle รวม Popper แล้ว) -->
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+
+<!--  jQuery -->
+<script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+
+<!--  DataTables -->
+<script src="https://cdn.datatables.net/1.13.4/js/jquery.dataTables.min.js"></script>
 
 <script type="text/javascript" charset="utf-8">
     $(document).ready(function() {
@@ -931,6 +960,14 @@ function formatSalesShort($number)
             }
         }, 200); // รอ modal เปิดก่อนเล็กน้อย
     });
+</script>
+<script>
+    function toggleAll(source) {
+        checkboxes = document.querySelectorAll('input[name="sale_ids[]"]');
+        for (let i = 0; i < checkboxes.length; i++) {
+            checkboxes[i].checked = source.checked;
+        }
+    }
 </script>
 
 </body>

@@ -60,36 +60,27 @@ $result = $conn->query($sql);
 <html lang="en">
 <head>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <link rel="stylesheet" href="css/bootstrap.min.css">
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
 
-    <!-- Favicons -->
-    <link href="assets/img/ma2.png" rel="icon">
-    <link href="assets/img/ma2.png" rel="apple-touch-icon">
 
-    <!-- ลิงค์ของตาราง -->
-    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.10.0/css/all.min.css" rel="stylesheet">
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.4.1/font/bootstrap-icons.css" rel="stylesheet">
+  <!-- ลิงค์ของตาราง -->
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.10.0/css/all.min.css" rel="stylesheet">
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.4.1/font/bootstrap-icons.css" rel="stylesheet">
 
 
-    <!-- ไลบารี่ไอคอน -->
-    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.10.0/css/all.min.css" rel="stylesheet">
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.4.1/font/bootstrap-icons.css" rel="stylesheet">
+  <!-- Google Fonts -->
+  <link href="https://fonts.gstatic.com" rel="preconnect">
+  <link href="https://fonts.googleapis.com/css?family=Open+Sans:300,300i,400,400i,600,600i,700,700i|Nunito:300,300i,400,400i,600,600i,700,700i|Poppins:300,300i,400,400i,500,500i,600,600i,700,700i" rel="stylesheet">
 
 
-    <!-- Google Fonts -->
-    <link href="https://fonts.gstatic.com" rel="preconnect">
-    <link href="https://fonts.googleapis.com/css?family=Open+Sans:300,300i,400,400i,600,600i,700,700i|Nunito:300,300i,400,400i,600,600i,700,700i|Poppins:300,300i,400,400i,500,500i,600,600i,700,700i" rel="stylesheet">
+  <!-- Template Main CSS File -->
+  <link href="//cdn.datatables.net/1.13.4/css/jquery.dataTables.min.css" rel="stylesheet">
+ <!-- จบลิงค์ของตาราง -->
 
-
-    <!-- Template Main CSS File -->
-    <link href="assets/css/style.css" rel="stylesheet">
-    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.10.0/css/all.min.css" rel="stylesheet">
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.4.1/font/bootstrap-icons.css" rel="stylesheet">
-    <link href="//cdn.datatables.net/1.13.4/css/jquery.dataTables.min.css" rel="stylesheet">
-    <!-- จบลิงค์ของตาราง -->
-        
     
     <title>จัดการข้อมูลพนักงาน</title>
 </head>
@@ -205,7 +196,7 @@ $result = $conn->query($sql);
                     </div>
                 </div>
             </div>
-        </div>
+        </div><br><br>
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.11.6/dist/umd/popper.min.js"></script>
@@ -213,15 +204,15 @@ $result = $conn->query($sql);
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.0.2/dist/js/bootstrap.bundle.min.js" integrity="sha384-MrcW6ZMFYlzcLA8Nl+NtUVF0sA7MsXsP1UyJoMp4YLEuNSfAP+JcXn/tWtIaxVXM" crossorigin="anonymous"></script>
     <script src="https://code.jquery.com/jquery-3.7.0.min.js"></script>
     <script src="//cdn.datatables.net/1.13.4/js/jquery.dataTables.min.js"></script>
-    <script type="text/javascript" charset="utf-8">
+<script type="text/javascript" charset="utf-8">
         $(document).ready(function() {
         $('#tabledata').dataTable( {
         "oLanguage": {
-        "sLengthMenu": "แสดง MENU ข้อมูล",
+        "sLengthMenu": "แสดง _MENU_ ข้อมูล",
         "sZeroRecords": "ไม่พบข้อมูล",
-        "sInfo": "แสดง START ถึง END ของ TOTAL ข้อมูล",
+        "sInfo": "แสดง _START_ ถึง _END_ ของ _TOTAL_ ข้อมูล",
         "sInfoEmpty": "แสดง 0 ถึง 0 ของ 0 ข้อมูล",
-        "sInfoFiltered": "(จากข้อมูลทั้งหมด MAX ข้อมูล)",
+        "sInfoFiltered": "(จากข้อมูลทั้งหมด _MAX_ ข้อมูล)",
         "sSearch": "ค้นหา :",
         "aaSorting" :[[0,'desc']],
         "oPaginate": {
@@ -233,6 +224,6 @@ $result = $conn->query($sql);
         }
         } );
         } );
-    </script>
+</script>
 </body>
 </html>

@@ -115,7 +115,44 @@ $month_names = [
         </div>
     </div>
 
-    <!--  ตารางยอดขายตามปี -->
+    <!--  ตารางยอดขายรายเดือน -->
+<div class="row mb-5">
+    <div class="col-md-12">
+        <div class="card shadow-sm">
+            <div class="card-body">
+                <h5 class="mb-3">ข้อมูลยอดขายรายเดือน</h5>
+                <div class="table-responsive">
+                     <table id="tabledata2" class="table table-striped table-bordered">
+                        <thead style="font-size: small;">
+                            <tr>
+                                <th>ปี</th>
+                                <th>เดือน</th>
+                                <th>ยอดขาย (บาท)</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <?php if ($monthly_sales_result->num_rows > 0): ?>
+                                <?php while ($row = $monthly_sales_result->fetch_assoc()): ?>
+                                    <tr>
+                                        <td><?= htmlspecialchars($row['year']) ?></td>
+                                        <td><?= $month_names[intval($row['month'])] ?></td>
+                                        <td><?= number_format($row['total_amount'], 2) ?> บาท</td>
+                                    </tr>
+                                <?php endwhile; ?>
+                            <?php else: ?>
+                                <tr>
+                                    <td colspan="3" class="text-center">ไม่มีข้อมูลยอดขายรายเดือน</td>
+                                </tr>
+                            <?php endif; ?>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+  <!--  ตารางยอดขายตามปี -->
     <div class="row mb-4">
         <div class="col-md-12">
             <div class="card shadow-sm">
@@ -205,57 +242,22 @@ $month_names = [
         </div>
     </div>
 
-    <!--  ตารางยอดขายรายเดือน -->
-<div class="row mb-5">
-    <div class="col-md-12">
-        <div class="card shadow-sm">
-            <div class="card-body">
-                <h5 class="mb-3">ข้อมูลยอดขายรายเดือน</h5>
-                <div class="table-responsive">
-                    <table class="table table-striped table-bordered">
-                        <thead style="font-size: small;">
-                            <tr>
-                                <th>ปี</th>
-                                <th>เดือน</th>
-                                <th>ยอดขาย (บาท)</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            <?php if ($monthly_sales_result->num_rows > 0): ?>
-                                <?php while ($row = $monthly_sales_result->fetch_assoc()): ?>
-                                    <tr>
-                                        <td><?= htmlspecialchars($row['year']) ?></td>
-                                        <td><?= $month_names[intval($row['month'])] ?></td>
-                                        <td><?= number_format($row['total_amount'], 2) ?> บาท</td>
-                                    </tr>
-                                <?php endwhile; ?>
-                            <?php else: ?>
-                                <tr>
-                                    <td colspan="3" class="text-center">ไม่มีข้อมูลยอดขายรายเดือน</td>
-                                </tr>
-                            <?php endif; ?>
-                        </tbody>
-                    </table>
-                </div>
-            </div>
-        </div>
-    </div>
-</div>
-
+    
 </div> <!-- /.container -->
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.0.2/dist/js/bootstrap.bundle.min.js" integrity="sha384-MrcW6ZMFYlzcLA8Nl+NtUVF0sA7MsXsP1UyJoMp4YLEuNSfAP+JcXn/tWtIaxVXM" crossorigin="anonymous"></script>
     <script src="https://code.jquery.com/jquery-3.7.0.min.js"></script>
     <script src="//cdn.datatables.net/1.13.4/js/jquery.dataTables.min.js"></script>
+  
     <script type="text/javascript" charset="utf-8">
         $(document).ready(function() {
         $('#tabledata').dataTable( {
         "oLanguage": {
-        "sLengthMenu": "แสดง MENU ข้อมูล",
+        "sLengthMenu": "แสดง _MENU_ ข้อมูล",
         "sZeroRecords": "ไม่พบข้อมูล",
-        "sInfo": "แสดง START ถึง END ของ TOTAL ข้อมูล",
+        "sInfo": "แสดง _START_ ถึง _END_ ของ _TOTAL_ ข้อมูล",
         "sInfoEmpty": "แสดง 0 ถึง 0 ของ 0 ข้อมูล",
-        "sInfoFiltered": "(จากข้อมูลทั้งหมด MAX ข้อมูล)",
+        "sInfoFiltered": "(จากข้อมูลทั้งหมด _MAX_ ข้อมูล)",
         "sSearch": "ค้นหา :",
         "aaSorting" :[[0,'desc']],
         "oPaginate": {
@@ -272,11 +274,33 @@ $month_names = [
         $(document).ready(function() {
         $('#tabledata1').dataTable( {
         "oLanguage": {
-        "sLengthMenu": "แสดง MENU ข้อมูล",
+        "sLengthMenu": "แสดง _MENU_ ข้อมูล",
         "sZeroRecords": "ไม่พบข้อมูล",
-        "sInfo": "แสดง START ถึง END ของ TOTAL ข้อมูล",
+        "sInfo": "แสดง _START_ ถึง _END_ ของ _TOTAL_ ข้อมูล",
         "sInfoEmpty": "แสดง 0 ถึง 0 ของ 0 ข้อมูล",
-        "sInfoFiltered": "(จากข้อมูลทั้งหมด MAX ข้อมูล)",
+        "sInfoFiltered": "(จากข้อมูลทั้งหมด _MAX_ ข้อมูล)",
+        "sSearch": "ค้นหา :",
+        "aaSorting" :[[0,'desc']],
+        "oPaginate": {
+        "sFirst":    "หน้าแรก",
+        "sPrevious": "ก่อนหน้า",
+        "sNext":     "ถัดไป",
+        "sLast":     "หน้าสุดท้าย"
+        },
+        }
+        } );
+        } );
+    </script>
+
+    <script type="text/javascript" charset="utf-8">
+        $(document).ready(function() {
+        $('#tabledata2').dataTable( {
+        "oLanguage": {
+        "sLengthMenu": "แสดง _MENU_ ข้อมูล",
+        "sZeroRecords": "ไม่พบข้อมูล",
+        "sInfo": "แสดง _START_ ถึง _END_ ของ _TOTAL_ ข้อมูล",
+        "sInfoEmpty": "แสดง 0 ถึง 0 ของ 0 ข้อมูล",
+        "sInfoFiltered": "(จากข้อมูลทั้งหมด _MAX_ ข้อมูล)",
         "sSearch": "ค้นหา :",
         "aaSorting" :[[0,'desc']],
         "oPaginate": {

@@ -95,8 +95,8 @@ while ($row = $result->fetch_assoc()) {
 }
 
 // แยก 5 อันดับแรกและ 5 อันดับล่าง (ถ้ามีมากพอ)
-$top_5_products = array_slice($top_products, 0, 5);
-$bottom_5_products = array_slice(array_reverse($top_products), 0, 5);
+$top_10_products = array_slice($top_products, 0, 10);
+$bottom_10_products = array_slice(array_reverse($top_products), 0, 10);
 
 // ยอดขายรวมทั้งปี
 $total_sales_year = array_sum($monthly_data);
@@ -162,7 +162,7 @@ $conn->close();
     <?php include 'topnavbar.php'; ?>
 
 <div class="container mt-5">
-
+<h3 class="text-center mb-4">ยอดขายผู้แทน</h3>
     <!-- ฟอร์มเลือกปี -->
     <div class="card shadow-sm mb-4">
         <div class="card-body">
@@ -255,7 +255,7 @@ $conn->close();
                         <i class="fas fa-expand"></i> ขยาย
                     </button>
                 </div>
-                <h5 class="text-center">สินค้าขายดี 5 อันดับ</h5>
+                <h5 class="text-center">สินค้าขายดี 10 อันดับ</h5>
                 <canvas id="topProductsChart"></canvas>
             </div>
         </div>
@@ -268,7 +268,7 @@ $conn->close();
                         <i class="fas fa-expand"></i> ขยาย
                     </button>
                 </div>
-                <h5 class="text-center">สินค้าขายไม่ดี 5 อันดับ</h5>
+                <h5 class="text-center">สินค้าขายไม่ดี 10 อันดับ</h5>
                 <canvas id="bottomProductsChart"></canvas>
             </div>
         </div>
@@ -299,8 +299,8 @@ $conn->close();
     const monthlyData = <?= json_encode($monthly_data) ?>;
     const quarterlyData = <?= json_encode($quarterly_data) ?>;
     const productData = <?= json_encode($product_data) ?>;
-    const top5Products = <?= json_encode($top_5_products) ?>;
-    const bottom5Products = <?= json_encode($bottom_5_products) ?>;
+    const top10Products = <?= json_encode($top_10_products) ?>;
+    const bottom10Products = <?= json_encode($bottom_10_products) ?>;
 
     // ป้ายกำกับเดือนและไตรมาส
     const monthLabels = ['มกราคม', 'กุมภาพันธ์', 'มีนาคม', 'เมษายน', 'พฤษภาคม', 'มิถุนายน',
@@ -408,16 +408,16 @@ $conn->close();
         return Array.from({length: count}, (_, i) => `hsl(${i * 360 / count}, 70%, 70%)`);
     }
 
-    // กราฟสินค้าขายดี
+   // กราฟสินค้าขายดี
     const ctxTop = document.getElementById('topProductsChart').getContext('2d');
     new Chart(ctxTop, {
         type: 'bar',
         data: {
-            labels: top5Products.map(item => item.product),
+            labels: top10Products.map(item => item.product),
             datasets: [{
                 label: 'ยอดขาย (บาท)',
-                data: top5Products.map(item => item.total_sales),
-                backgroundColor: getColorPalette(top5Products.length),
+                data: top10Products.map(item => item.total_sales),
+                backgroundColor: getColorPalette(top10Products.length),
                 borderWidth: 1
             }]
         },
@@ -439,11 +439,11 @@ $conn->close();
     new Chart(ctxBottom, {
         type: 'bar',
         data: {
-            labels: bottom5Products.map(item => item.product),
+            labels: bottom10Products.map(item => item.product),
             datasets: [{
                 label: 'ยอดขาย (บาท)',
-                data: bottom5Products.map(item => item.total_sales),
-                backgroundColor: getColorPalette(bottom5Products.length),
+                data: bottom10Products.map(item => item.total_sales),
+                backgroundColor: getColorPalette(bottom10Products.length),
                 borderWidth: 1
             }]
         },
@@ -458,7 +458,9 @@ $conn->close();
                 }
             }
         }
-    });
+    });     
+
+
     
         // รับค่า user_id และ ปีจาก PHP
         const employeeIds = <?= json_encode($employee_ids) ?>;
