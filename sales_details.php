@@ -820,6 +820,11 @@ function formatSalesShort($number)
                         text: "ยอดขาย (บาท)"
                     }
                 }
+            },
+
+            onClick: (event, elements) => {
+                window.location.href =
+                    "sales_all_years.php?user_id=<?= $user_id ?>";
             }
         }
     });
