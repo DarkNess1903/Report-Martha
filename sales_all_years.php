@@ -386,7 +386,7 @@ $avg_per_year  = $year_count > 0 ? $all_time_total / $year_count : 0;
                 }
             },
             // คลิกที่จุด/เส้นของเดือน → ถ้าต้องการจะลิงก์ไปหน้า sales_by_month ก็ทำตรงนี้
-            onClick: (event, elements) => {
+           /* onClick: (event, elements) => {
                 if (elements.length > 0) {
                     const element = elements[0];
                     const year   = multiYearChart.data.datasets[element.datasetIndex].year;
@@ -398,7 +398,7 @@ $avg_per_year  = $year_count > 0 ? $all_time_total / $year_count : 0;
                     window.location.href =
                         "sales_by_month_ss.php?user_id=<?= $user_id ?>&year=" + year + "&month=" + month;
                 }
-            }
+            }*/
         }
     });
 
